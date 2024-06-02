@@ -86,7 +86,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': os.environ.get('POSTGRES_DATABASE'),
         'USER': os.environ.get('POSTGRES_USER'),
-        'PASSWORD': os.environ.get('POSTGRES_USER_PASSWORD'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
         # First for compose, second for local run
         'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),
         'PORT': '',
