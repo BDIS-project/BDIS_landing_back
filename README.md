@@ -33,16 +33,16 @@
 
 * Create and run container:
     ```bash
-    docker run --detach --name mariadb \
+    docker run --detach --name postgres \
     --env POSTGRES_USER=$POSTGRES_USER \
     --env POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
     --env POSTGRES_DATABASE=$POSTGRES_DATABASE \
     --env POSTGRES_ROOT_PASSWORD=$POSTGRES_ROOT_PASSWORD \
-    -p 3306:3306 mariadb
+    -p 5432:5432 postgres
     ```
 * To stop container:
     ```bash
-    docker stop mariadb
+    docker stop postgres
     ```
 
 ### Database dump
@@ -51,13 +51,13 @@
 
 * Save database to `dump.sql` file:
     ```bash
-    docker exec -it mariadb mariadb-dump \
+    docker exec -it postgres postgres-dump \
     --user=$POSTGRES_USER --password=$POSTGRES_PASSWORD \
     $POSTGRES_DATABASE > dump.sql
     ```
 * Load `dump.sql` file to database:
     ```bash
-    docker exec -i mariadb mariadb \
+    docker exec -i postgres postgres \
     --user=$POSTGRES_USER \
     --password=$POSTGRES_PASSWORD \
     $POSTGRES_DATABASE < dump.sql
