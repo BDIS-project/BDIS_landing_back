@@ -1,0 +1,10 @@
+Інструкція стосовно того, як створити бд і заповнити її тестовими даними використовуючи Ubuntu
+sudo -i -u postgres
+-- Enter your password
+-- Copy and paste next commands on at a time
+psql -U postgres -c "CREATE DATABASE script_test"
+psql -U postgres -d script_test -f "/<path to downloaded script>/sql_script.sql"
+-- If you are running Postgres on Ubuntu, and sript file is saved on Windows filesystem, there might be problems. Consider consulting ChatGPT.
+-- You should see messeges about successful creatin of tables, functions and triggers
+-- type "psql", now you can enter SQL commands to your data base
+-- copy and paste insert statements from test_data.sql
