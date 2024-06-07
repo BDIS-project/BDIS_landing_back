@@ -1,3 +1,10 @@
+-- TODO list
+-- 1) There might be need to add Check_Table Sum_total calculation
+-- which equals sum of selling_price of connected Sale entities minus percentage on Client_Card
+-- 2) Find out what to do with Start_of_work date
+-- 3) Find out how to determine if product is promotopnal
+-- 4) Find out if it is OK that Check was changed to Check_table
+
 -- create Category table
 CREATE TABLE Category ( 
     category_number SERIAL PRIMARY KEY,  
