@@ -29,6 +29,7 @@ CREATE TABLE Store_Product (
     id_product INTEGER NOT NULL,
     selling_price DECIMAL(13, 4) NOT NULL,
     products_number INTEGER NOT NULL,
+   -- expire_date DATE NOT NULL,
     promotional_product BOOLEAN NOT NULL,
     CONSTRAINT positive_id_product CHECK (id_product > 0),
     CONSTRAINT positive_selling_price CHECK (selling_price > 0),
