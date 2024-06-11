@@ -19,4 +19,5 @@ from django.urls import path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('products/', StoreProductsAPIView.as_view(), name='store-products'),
 ]
