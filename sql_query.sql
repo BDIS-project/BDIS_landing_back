@@ -29,8 +29,8 @@ FROM Product
 ORDER BY product_name;
 
 -- Отримати інформацію про усі товари у магазині, відсортовані за кількістю;
-SELECT * 
-FROM Store_Product
+SELECT product_name, selling_price, products_number, promotional_product
+FROM Store_Product JOIN Product ON Store_Product.id_product = Product.id_product
 ORDER BY products_number;
 
 -- За прізвищем працівника знайти його телефон та адресу;
