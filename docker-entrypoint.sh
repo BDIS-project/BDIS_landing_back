@@ -1,5 +1,5 @@
 #!/bin/bash
 
-sleep 10
+sleep 30
 
 source django-runserver.sh
