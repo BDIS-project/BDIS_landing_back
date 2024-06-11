@@ -49,16 +49,20 @@
 
 ***Only when DB containser is running***
 
-* Save database to `dump.sql` file:
+* Create database:
     ```bash
-    docker exec -it postgres postgres-dump \
-    --user=$POSTGRES_USER --password=$POSTGRES_PASSWORD \
-    $POSTGRES_DATABASE > dump.sql
+    echo "CREATE DATABASE $POSTGRES_DATABASE;" | \
+    docker exec -i bdis_landing_back-postgres-1 psql \
+    -U $POSTGRES_USER -d postgres
     ```
-* Load `dump.sql` file to database:
+
+* Create database tables from `sql_script.sql`:
     ```bash
-    docker exec -i postgres postgres \
-    --user=$POSTGRES_USER \
-    --password=$POSTGRES_PASSWORD \
-    $POSTGRES_DATABASE < dump.sql
+    cat sql_script.sql | docker exec -i bdis_landing_back-postgres-1 psql \
+    -U $POSTGRES_USER -d $POSTGRES_DATABASE -a
     ```
+
+* Load data from `test_data.sql` to database:
+    ```bash
+    cat test_data.sql | docker exec -i bdis_landing_back-postgres-1 psql \
+    -U $POSTGRES_USER -d $POSTGRES_DATABASE -a
