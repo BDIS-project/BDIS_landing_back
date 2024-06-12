@@ -82,20 +82,42 @@ FROM Store_Product JOIN Product ON Store_Product.id_product = Product.id_product
 WHERE promotional_product = FALSE
 ORDER BY product_name;
 
--- 17. Отримати інформацію про усі чеки, створені певним касиром за певний період часу 
--- (з можливістю перегляду куплених товарів у цьому чеку, їх назви, к-сті та ціни);
+-- 17. Get info about all checks created by certain cashier in certain period of time
+-- (with ability to view sold products in this check, their names, quantity and price); 
+SELECT Check_Table.check_number, id_employee, card_number, print_date, sum_total, vat,
+Product.product_name, Sale.selling_price, Sale.product_number
+FROM Check_Table INNER JOIN Sale ON Check_Table.check_number = Sale.check_number
+INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+INNER JOIN Product ON Store_Product.id_product = Product.id_product
+WHERE id_employee = '1001' AND print_date > '2024-06-10' AND print_date < '2024-06-15';
 
--- 18. Отримати інформацію про усі чеки, створені усіма касирами за певний період часу 
--- (з можливістю перегляду куплених товарів у цьому чеку, їх назва, к-сті та ціни);
+-- 18. Get info about all checks created by all cashiers in certain period of time
+-- (with ability to view sold products in this check, their names, quantity and price); 
+SELECT Check_Table.check_number, id_employee, card_number, print_date, sum_total, vat,
+Product.product_name, Sale.selling_price, Sale.product_number
+FROM Check_Table INNER JOIN Sale ON Check_Table.check_number = Sale.check_number
+INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+INNER JOIN Product ON Store_Product.id_product = Product.id_product
+WHERE print_date > '2024-06-10' AND print_date < '2024-06-15';
 
--- 19. Визначити загальну суму проданих товарів з чеків, створених певним касиром за
--- певний період часу;
+-- 19. Get sum total of sold products from checks, created by certain cashier 
+-- in certain period of time
+SELECT SUM(sum_total)
+FROM Check_Table
+WHERE id_employee = '1001' AND print_date > '2024-06-10' AND print_date < '2024-06-15';
 
--- 20. Визначити загальну суму проданих товарів з чеків, створених усіма касиром за
--- певний період часу;
+-- 20. Get sum total of sold products from checks, created by all cashiers
+-- in certain period of time
+SELECT SUM(sum_total)
+FROM Check_Table
+WHERE id_employee = '1001' AND print_date > '2024-06-10' AND print_date < '2024-06-15';
 
--- 21. Визначити загальну кількість одиниць певного товару, проданого за певний
--- період часу.
+-- 21. Determite total number of certain product, sold for certain period of time
+SELECT SUM(product_number)
+FROM Check_Table INNER JOIN Sale ON Check_Table.check_number = Sale.check_number
+INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+INNER JOIN Product ON Store_Product.id_product = Product.id_product
+WHERE product_name = 'Tomato' AND print_date > '2024-06-10' AND print_date < '2024-06-15';
 
 -- CASHIER --
 -- 1. Get info about all products, sorted by name;
@@ -140,9 +162,7 @@ WHERE id_employee = '1001' AND print_date::date = CURRENT_DATE;
 -- 10. View list of all checks cashier created for a certain period of time;
 SELECT * 
 FROM Check_Table
-WHERE id_employee = '1001'
-AND print_date >= '2024-06-01'
-AND print_date < '2024-06-12';
+WHERE id_employee = '1001' AND print_date > '2024-06-10' AND print_date < '2024-06-15';
 
 -- 11. For a given check number get all info about this check, including info about products names,
 -- number and price;
@@ -183,4 +203,3 @@ FROM Store_Product
 WHERE UPC = '101234567890';
 
 -- 15. Get all info about yourself
-SELECT * FROM Check_Table;
