@@ -19,7 +19,7 @@
     ```bash
     docker compose up --build -d
     ```
-    *Wait **10 sec** before the server starts completely.*
+    *Wait **30 sec** before the server starts completely.*
 * To stop containers, use the following commands:
     ```bash
     docker compose stop
