@@ -118,7 +118,7 @@ CREATE TABLE Customer_Card (
     CONSTRAINT positive_percent CHECK (percent > 0) 
 ); 
 
--- Names Check_table because CHECK is a keyword in Postgres
+-- Named Check_table because CHECK is a keyword in Postgres
 CREATE TABLE Check_Table ( 
     check_number VARCHAR(10) PRIMARY KEY NOT NULL, 
     id_employee VARCHAR(10) NOT NULL, 

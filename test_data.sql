@@ -61,11 +61,11 @@ INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic
 (106, 'Andriievych', 'Panas', 'Maksymovych', '+380986789012', 'Zaporizhzhia', 'Shevchenka', '00096', 3);
 
 -- Fill Check_Table table
-INSERT INTO Check_table (check_number, id_employee, card_number, print_date) VALUES 
-(100001, 1001, 102, '2024-04-25'),
-(100002, 1001, 101, '2024-04-25'),
-(100003, 1002, 103, '2024-06-25'),
-(100004, 1002, 104, '2024-04-25');
+INSERT INTO Check_table (check_number, id_employee, card_number, print_date, sum_total) VALUES 
+(100001, 1001, 102, '2024-06-12', 70.48),
+(100002, 1001, 101, '2024-06-13', 484.81),
+(100003, 1002, 103, '2024-06-10', 37.09),
+(100004, 1002, 104, '2024-06-7', 340.74);
 
 -- Fill Sales table
 INSERT INTO Sale (UPC, check_number, product_number) VALUES
