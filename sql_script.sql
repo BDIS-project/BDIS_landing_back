@@ -16,7 +16,8 @@ CREATE TABLE Product (
     id_product SERIAL PRIMARY KEY, 
     category_number INTEGER NOT NULL, 
     product_name VARCHAR(50) NOT NULL, 
-    characteristics VARCHAR(100) NOT NULL, 
+    characteristics VARCHAR(100) NOT NULL,
+    picture VARCHAR(100), 
     FOREIGN KEY (category_number) REFERENCES Category(category_number) 
         ON UPDATE CASCADE 
         ON DELETE NO ACTION 
