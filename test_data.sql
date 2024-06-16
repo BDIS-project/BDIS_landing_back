@@ -31,17 +31,17 @@ INSERT INTO Product (category_number, product_name, characteristics) VALUES
 ('890123456789', NULL, 18, 190.98, 15, FALSE),
 ('901234567890', NULL, 19, 19.99, 5, FALSE);*/
 
-INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product, picture) VALUES 
-('101234567890', NULL, 1, 14.45, 100, '2024-06-13', FALSE, NULL),
-('123456789012', '123456789012', 2, 10.99, 21, '2024-06-13', TRUE, NULL),
-('234567890123', '234567890123', 3, 15.11, 15, '2024-06-13', TRUE, NULL),
-('345678901234', NULL, 4, 22.19, 60, '2024-06-13', FALSE, NULL),
-('456789012345', NULL, 5, 18.93, 120, '2024-06-13', FALSE, NULL),
-('567890123456', NULL, 6, 31.23, 15, '2024-06-13', FALSE, NULL),
-('678901234567', '678901234567', 7, 28.28, 42, '2024-06-13', TRUE, NULL),
-('789012345678', NULL, 8, 56.16, 15, '2024-06-13', FALSE, NULL),
-('890123456789', NULL, 9, 190.98, 15, '2024-06-13', FALSE, NULL),
-('901234567890', NULL, 10, 19.99, 5, '2024-06-13', FALSE, NULL);
+INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product) VALUES 
+('101234567890', NULL, 1, 14.45, 100, '2024-06-13', FALSE),
+('123456789012', '123456789012', 2, 10.99, 21, '2024-06-13', TRUE),
+('234567890123', '234567890123', 3, 15.11, 15, '2024-06-13', TRUE),
+('345678901234', NULL, 4, 22.19, 60, '2024-06-13', FALSE),
+('456789012345', NULL, 5, 18.93, 120, '2024-06-13', FALSE),
+('567890123456', NULL, 6, 31.23, 15, '2024-06-13', FALSE),
+('678901234567', '678901234567', 7, 28.28, 42, '2024-06-13', TRUE),
+('789012345678', NULL, 8, 56.16, 15, '2024-06-13', FALSE),
+('890123456789', NULL, 9, 190.98, 15, '2024-06-13', FALSE),
+('901234567890', NULL, 10, 19.99, 5, '2024-06-13', FALSE);
 
 -- Fill Emplotee table
 INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary, date_of_birth, date_of_start, phone_number, city, street, zip_code) VALUES 
