@@ -4,104 +4,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import connection
 
-'''
-The APIView class is a part of the Django Rest Framework (DRF). 
-It provides a base class for all the API views and offers several advantages over standard Django views.
-
-APIView provides built-in methods for handling different HTTP methods like get, post, put, patch, delete, etc.
-
-APIView integrates with DRF's Request and Response classes, which provide additional functionality 
-over Django's standard HttpRequest and HttpResponse.
-DRF's Request class extends the standard request, adding support for parsing request data, such as JSON.
-DRF's Response class simplifies returning JSON responses.
-
-self: Refers to the instance of the class. 
-It allows access to the attributes and methods of the class in the get method
-
-request: An instance of rest_framework.request.Request.
-This is an extended version of Django's HttpRequest. It includes additional features like:
-.data: for accessing parsed request data.
-.query_params: for accessing query parameters.
-.user: for accessing the authenticated user.
-.auth: for accessing the authentication context.
-
-*args:
-Variable-length argument list. It captures additional positional arguments passed to the method.
-It is a way to accept any number of additional positional arguments.
-
-**kwargs:
-Variable-length keyword argument dictionary. It captures additional keyword arguments passed to the method.
-It is a way to accept any number of additional keyword arguments.
-Commonly used to pass URL parameters captured in Django URL patterns.
-
-product_name = request.GET.get('product_name')
-
-request:
-Represents the HTTP request object. In the context of Django and Django Rest Framework (DRF), 
-it contains all the information about the HTTP request made to the server.
-It is an instance of rest_framework.request.Request in DRF, which extends Django's HttpRequest.
-
-GET:
-request.GET is a dictionary-like object in Django that contains all the query parameters of the GET request.
-These query parameters are the key-value pairs included in the URL after the ? symbol.
-For example, in the URL http://example.com/api/products?product_name=Tomato, the query parameter 
-is product_name=Tomato.
-
-.get('product_name'):
-The .get() method is used to retrieve the value of a specific query parameter from the request.GET dictionary.
-In this case, 'product_name' is the key for which we want to get the value.
-.get() returns the value associated with the key 'product_name' if it exists in the query parameters.
-If the key does not exist, it returns None.
-
-%s:
-This is a placeholder used in SQL queries for parameter substitution.
-In the context of Python's cursor.execute(), 
-the %s placeholder is replaced with the actual value in a safe manner to prevent SQL injection.
-
-{}:
-This is a placeholder for Python's str.format() method.
-It allows dynamic insertion of values into the query string.
-Example: "ORDER BY {};" can be formatted with a column name to dynamically specify the ORDER BY column.
-Usage: query.format('product_name') would result in ORDER BY product_name.
-
-with connection.cursor() as cursor:
-This is a context manager that ensures proper resource management.
-connection.cursor() opens a new database cursor.
-The cursor is used to execute SQL commands and fetch results.
-as cursor assigns the cursor object to the variable cursor.
-When the block inside the with statement is exited, the cursor is automatically closed.
-
-cursor.execute(queries['all_products']):
-Executes the SQL query stored in queries['all_products'].
-
-products = cursor.fetchall():
-Fetches all rows from the executed query result.
-fetchall() returns a list of tuples, where each tuple represents a row in the result set.
-
-product_columns = [col[0] for col in cursor.description]:
-cursor.description provides metadata about the columns in the result set.
-It is a list of tuples, where each tuple contains information about a column.
-col[0] accesses the first element of each tuple, which is the column name.
-This list comprehension creates a list of column names.
-
-product_list = [dict(zip(product_columns, product)) for product in products]:
-Converts each tuple in products to a dictionary.
-zip(product_columns, product) pairs each column name with the corresponding value from the row tuple.
-dict() creates a dictionary from these pairs.
-The list comprehension applies this transformation to each row in products.
-
-product_list = [dict(zip(product_columns, product)) for product in products]:
-Converts each tuple in products to a dictionary.
-zip(product_columns, product) pairs each column name with the corresponding value from the row tuple.
-dict() creates a dictionary from these pairs.
-The list comprehension applies this transformation to each row in products.
-'''
-
-from django.db import connection
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-
 class StoreProductsAPIView(APIView):
     """
     API view to retrieve store products using raw SQL.
@@ -216,3 +118,100 @@ class StoreProductsAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
     
+class StoreProducts2APIView(APIView):
+    """
+    API view to retrieve store products using raw SQL.
+    """
+    def get(self, request, *args, **kwargs):
+        upc = request.GET.get('upc')
+        product_name = request.GET.get('product_name')
+        category_name = request.GET.get('category_name')
+        promotional = request.GET.get('promotional')
+        min_price = request.GET.get('minPrice')
+        max_price = request.GET.get('maxPrice')
+        categories = request.GET.get('categories')
+        in_stock = request.GET.get('inStock')
+        sort_by = request.GET.get('sort', 'product_name')
+
+        sort_by_column = 'product_name'
+        sort_by_direction = 'ASC'
+
+        if sort_by:
+            if sort_by.endswith('-desc'):
+                sort_by_column = sort_by[:-5]
+                sort_by_direction = 'DESC'
+            elif sort_by.endswith('-asc'):
+                sort_by_column = sort_by[:-4]
+                sort_by_direction = 'ASC'
+            else:
+                sort_by_column = sort_by
+
+        base_query = (
+            "SELECT Store_Product.*, product_name, category_name "
+            "FROM Store_Product "
+            "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
+            "INNER JOIN Category ON Product.category_number = Category.category_number "
+            "WHERE 1=1 "
+        )
+
+        query_conditions = []
+        params = []
+
+        if upc:
+            query_conditions.append("AND UPC = %s")
+            params.append(upc)
+        if product_name:
+            query_conditions.append("AND product_name = %s")
+            params.append(product_name)
+        if category_name:
+            query_conditions.append("AND category_name = %s")
+            params.append(category_name)
+        if promotional:
+            query_conditions.append("AND promotional_product = %s")
+            params.append(promotional.lower() == 'true')
+        if min_price:
+            query_conditions.append("AND selling_price >= %s")
+            params.append(min_price)
+        if max_price:
+            query_conditions.append("AND selling_price <= %s")
+            params.append(max_price)
+        if categories:
+            category_list = categories.split(',')
+            query_conditions.append(f"AND category_name IN ({','.join(['%s'] * len(category_list))})")
+            params.extend(category_list)
+        if in_stock:
+            query_conditions.append("AND products_number > 0")
+
+        query = base_query + ' '.join(query_conditions) + f" ORDER BY {sort_by_column} {sort_by_direction};"
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = []
+        for row in rows:
+            product = dict(zip(columns, row))
+            if 'promotional_product' in product and product['promotional_product']:
+                product['original_price'] = round(float(product['selling_price']) / 0.8, 2)
+            if 'selling_price' in product:
+                product['selling_price'] = round(float(product['selling_price']), 2)
+            result.append(product)
+
+        return Response(result, status=status.HTTP_200_OK)
+    
+
+class CategoriesAPIView(APIView):
+    """
+    API view to retrieve all categories using raw SQL.
+    """
+    def get(self, request, *args, **kwargs):
+        query = "SELECT category_name FROM Category ORDER BY category_name;"
+        
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+        category_names = [row[0] for row in rows]
+
+        return Response(category_names, status=status.HTTP_200_OK)

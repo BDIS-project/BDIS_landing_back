@@ -7,5 +7,6 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('products/', StoreProductsAPIView.as_view(), name='store-products'),
+    path('products', StoreProducts2APIView.as_view(), name='store-products'),
+    path('categories', CategoriesAPIView.as_view(), name='get_categories'),
 ]
