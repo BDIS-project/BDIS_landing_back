@@ -1,8 +1,15 @@
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from django.db import connection
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+import hashlib
+
+from .permissions import IsCashier, IsManager
 
 class StoreProductsAPIView(APIView):
     """
@@ -86,8 +93,7 @@ class StoreProductsAPIView(APIView):
             result.append(product)
 
         return Response(result, status=status.HTTP_200_OK)
-    
-    
+
 
 class CategoriesAPIView(APIView):
     """
@@ -103,8 +109,9 @@ class CategoriesAPIView(APIView):
         category_names = [row[0] for row in rows]
 
         return Response(category_names, status=status.HTTP_200_OK)
-    
-class ProducrsAPIView(APIView):
+
+
+class ProductsAPIView(APIView):
     """
     API view to retrive products using raw sql
     """
@@ -121,3 +128,52 @@ class ProducrsAPIView(APIView):
 
         return Response(product_names, status=status.HTTP_200_OK)
         
+        
+class LoginView(APIView):
+    @method_decorator(csrf_exempt)
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        # Hash the password before checking it against the database
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, username, role FROM Users WHERE username = %s AND password = %s",
+                [username, hashed_password]
+            )
+            user = cursor.fetchone()
+        
+        if user:
+            user_id, username, role = user
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': {
+                    'id': user_id,
+                    'username': username,
+                    'role': role,
+                }
+            }, status=status.HTTP_200_OK)
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutView(APIView):
+    def post(self, request):
+        request.auth.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CashierView(APIView):
+    permission_classes = [IsAuthenticated, IsCashier]
+
+    def get(self, request):
+        return Response({'message': 'Hello, Cashier!'})
+
+class ManagerView(APIView):
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request):
+        return Response({'message': 'Hello, Manager!'})
+      
