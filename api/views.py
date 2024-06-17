@@ -10,6 +10,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
 
+import logging
+
 from .permissions import IsCashier, IsManager
 
 class StoreProductsAPIView(APIView):
@@ -98,6 +100,7 @@ class StoreProductsAPIView(APIView):
 
 
 class CategoriesAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsCashier]
     """
     API view to retrieve all categories using raw SQL.
     """
@@ -133,11 +136,12 @@ class ProductsAPIView(APIView):
         
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthorized access
+
     @method_decorator(csrf_exempt)
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        
+
         # Hash the password before checking it against the database
         #hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
@@ -167,6 +171,7 @@ class LoginView(APIView):
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         request.auth.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -183,3 +188,9 @@ class ManagerView(APIView):
 
     def get(self, request):
         return Response({'message': 'Hello, Manager!'})
+    
+class TestTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return Response({'message': 'Token is valid'}, status=status.HTTP_200_OK)
