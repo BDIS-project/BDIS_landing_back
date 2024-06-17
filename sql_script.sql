@@ -16,7 +16,8 @@ CREATE TABLE Product (
     id_product SERIAL PRIMARY KEY, 
     category_number INTEGER NOT NULL, 
     product_name VARCHAR(50) NOT NULL, 
-    characteristics VARCHAR(100) NOT NULL, 
+    characteristics VARCHAR(100) NOT NULL,
+    picture VARCHAR(100), 
     FOREIGN KEY (category_number) REFERENCES Category(category_number) 
         ON UPDATE CASCADE 
         ON DELETE NO ACTION 
@@ -29,11 +30,11 @@ CREATE TABLE Store_Product (
     id_product INTEGER NOT NULL,
     selling_price DECIMAL(13, 4) NOT NULL,
     products_number INTEGER NOT NULL,
-   -- expire_date DATE NOT NULL,
+    expire_date DATE NOT NULL,
     promotional_product BOOLEAN NOT NULL,
     CONSTRAINT positive_id_product CHECK (id_product > 0),
     CONSTRAINT positive_selling_price CHECK (selling_price > 0),
-    CONSTRAINT positive_products_number CHECK (products_number > 0),
+    CONSTRAINT not_negative_products_number CHECK (products_number > -1),
     FOREIGN KEY (UPC_prom) REFERENCES Store_Product(UPC)
         ON UPDATE CASCADE 
         ON DELETE SET NULL, 
@@ -104,6 +105,16 @@ CREATE TABLE Employee (
     street VARCHAR(50) NOT NULL, 
     zip_code VARCHAR(9) NOT NULL 
 ); 
+
+CREATE TABLE User (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    id_employee VARCHAR(10) NOT NULL, 
+    FOREIGN KEY (id_employee) REFERENCES Employee(id_employee) 
+        ON UPDATE CASCADE 
+        ON DELETE NO ACTION
+);
 
 CREATE TABLE Customer_Card ( 
     card_number VARCHAR(13) PRIMARY KEY NOT NULL, 
