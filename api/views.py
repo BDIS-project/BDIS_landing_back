@@ -1,7 +1,7 @@
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -15,6 +15,7 @@ class StoreProductsAPIView(APIView):
     """
     API view to retrieve store products using raw SQL.
     """
+    permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
         upc = request.GET.get('upc')
         product_name = request.GET.get('product_name')
@@ -28,20 +29,20 @@ class StoreProductsAPIView(APIView):
         query_conditions = []
         params = []
 
+        sorter = "product_name"
         if sort_by:
-            sorter = ''
             if sort_by == 'products-desc':
                 sorter = "product_name DESC"
             elif sort_by == 'products-asc':
-                sorter = "product_name "
+                sorter = "product_name"
             elif sort_by == 'price-desc':
                 sorter = "selling_price DESC"
             elif sort_by == 'price-asc':
-                sorter = "selling_price "
+                sorter = "selling_price"
             elif sort_by == 'numbers-desc':
-                sorter = "product_numbers DESC "
+                sorter = "products_number DESC"
             else:
-                sorter = "product_numbers "
+                sorter = "products_number"
            
         base_query = (
             "SELECT Store_Product.*, product_name, category_name "
@@ -51,8 +52,6 @@ class StoreProductsAPIView(APIView):
             "WHERE 1=1 "
         )
 
-        query_conditions = []
-        params = []
 
         if upc:
             query_conditions.append("AND UPC = %s")
@@ -99,36 +98,129 @@ class CategoriesAPIView(APIView):
     """
     API view to retrieve all categories using raw SQL.
     """
+    permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
         query = "SELECT category_name FROM Category ORDER BY category_name;"
         
         with connection.cursor() as cursor:
             cursor.execute(query)
-            rows = cursor.fetchall()
+            categories = cursor.fetchall()
+            category_names = [col[0] for col in cursor.description]
 
-        category_names = [row[0] for row in rows]
+        result = [dict(zip(category_names, category)) for category in categories]
 
-        return Response(category_names, status=status.HTTP_200_OK)
-
+        return Response(result, status=status.HTTP_200_OK)
+    
 
 class ProductsAPIView(APIView):
     """
     API view to retrive products using raw sql
     """
+    permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
-        query = ("SELECT Store_Product.*, product_name, category_name "
-                "FROM Store_Product INNER JOIN Product ON Store_Product.id_product = Product.id_product "
-                "INNER JOIN Category ON Product.category_number = Category.category_number "
+        query = ("SELECT Product.*, category_name "
+                "FROM Product INNER JOIN Category ON Product.category_number = Category.category_number "
                 "ORDER BY product_name;")
+        
         with connection.cursor() as cursor:
             cursor.execute(query)
+            products = cursor.fetchall()
+            products_names = [col[0] for col in cursor.description]
+
+        result = [dict(zip(products_names, product)) for product in products]
+
+        return Response(result, status=status.HTTP_200_OK)
+        
+class StoreOverviewAPIView(APIView):
+    """
+    API view to look over store using raw SQL for Manager.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        employee = request.GET.get('employee')
+        role = request.GET.get('role')
+        employee_surname = request.GET.get('employee-surname')
+        customer = request.GET.get('customer')
+        percent = request.GET.get('percent')
+        categories = request.GET.get('categories')
+        category = request.GET.get('category')
+        products = request.GET.get('products')
+        store_products = request.GET.get('store-products')
+        sort_by = request.GET.get('sort-by')
+        promotional_products = request.GET.get('promotional-products')
+        non_promotional_products = request.GET.get('non-promotional-products')
+        upc = request.GET.get('upc')
+
+
+        query = []
+        params = []
+
+        if employee:
+            query = ["SELECT * FROM Employee"] # Get all employees sorted by surname
+            if role:
+                query.append("WHERE empl_role = %s") # Get all cashiers sorted by surname
+                params.append(role)
+            query.append("ORDER BY empl_surname;")  
+        elif employee_surname: # Get employee address and phone number by surname
+            query = ["SELECT city, street, phone_number ",
+                     "FROM Employee ",
+                     "WHERE empl_surname = %s"]
+            params.append(employee_surname)
+        elif customer: # Get all regular customers 
+            query = ["SELECT * FROM Customer_Card"]
+            if percent:
+                query.append("WHERE percent = %s")
+                params.append(percent)
+            query.append("ORDER BY cust_surname;")  
+        elif categories:
+            query = ["SELECT * FROM Category ORDER BY category_name;"]
+        elif products:
+            query = ["SELECT Product.*, category_name "
+                     "FROM Product INNER JOIN Category ON Product.category_number = Category.category_number "]
+            if(category):
+                query.append("WHERE category_name = %s ")
+                params.append(category)
+        elif store_products:
+            query = ["SELECT Store_Product.*, product_name, category_name "
+            "FROM Store_Product "
+            "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
+            "INNER JOIN Category ON Product.category_number = Category.category_number "]
+            if promotional_products:
+                query.append("WHERE promotional_product = TRUE ")
+            elif non_promotional_products:
+                query.append("WHERE promotional_product = FALSE ")
+            if sort_by:
+                query.append("ORDER BY %s;")
+                params.append(sort_by)
+            else:
+                query.append("ORDER BY product_name")
+        elif upc: 
+            query = ["SELECT product_name, selling_price, products_number, characteristics "
+            "FROM Store_Product "
+            "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
+            "WHERE upc = %s"]
+            params.append(upc)
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
             rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
 
-        product_names = [row[0] for row in rows]
+        result = []
+        for row in rows:
+            product = dict(zip(columns, row))
+            if 'promotional_product' in product and product['promotional_product']:
+                product['original_price'] = round(float(product['selling_price']) / 0.8, 2)
+            if 'selling_price' in product:
+                product['selling_price'] = round(float(product['selling_price']), 2)
+            result.append(product)
 
-        return Response(product_names, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)
+
         
-        
+
 class LoginView(APIView):
     @method_decorator(csrf_exempt)
     def post(self, request):
@@ -164,7 +256,6 @@ class LogoutView(APIView):
         request.auth.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class CashierView(APIView):
     permission_classes = [IsAuthenticated, IsCashier]
 
@@ -176,4 +267,3 @@ class ManagerView(APIView):
 
     def get(self, request):
         return Response({'message': 'Hello, Manager!'})
-      
