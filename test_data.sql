@@ -43,13 +43,19 @@ INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_nu
 ('890123456789', NULL, 9, 190.98, 15, '2024-06-13', FALSE),
 ('901234567890', NULL, 10, 19.99, 5, '2024-06-13', FALSE);
 
--- Fill Emplotee table
+-- Fill Employee table
 INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary, date_of_birth, date_of_start, phone_number, city, street, zip_code) VALUES 
-(1001, 'Kovalenko', 'Anatoliy', 'Vasylovych', 'sales', 1000, '1984-12-03', '2005-01-09', '+380678541234', 'Kyiv', 'Hrushevskoho', '00100'),
-(1002, 'Honchar', 'Oksana', 'Petrovna', 'sales', 1200, '1978-07-24', '2000-05-15', '+380509876543', 'Lviv', 'Stepana Bandery', '00120'),
-(1003, 'Savchuk', 'Yevheniya', 'Olehivna', 'sales', 500, '1992-09-11', '2014-03-20', '+380974567898', 'Odessa', 'Morska', '00130'),
-(1004, 'Shevchenko', 'Mykola', 'Ivanovych', 'cleaner', 510, '1986-05-02', '2007-12-10', '+380681234567', 'Kharkiv', 'Poltavskyi', '00140'),
-(1005, 'Krushenytska', 'Iryna', 'Mykolayivna', 'manager', 2000, '1989-09-30', '2010-05-07', '+380996754321', 'Zaporizhzhia', 'Shevchenka', '00150');
+(1001, 'Kovalenko', 'Anatoliy', 'Vasylovych', 'Cashier', 1000, '1984-12-03', '2005-01-09', '+380678541234', 'Kyiv', 'Hrushevskoho', '00100'),
+(1002, 'Honchar', 'Oksana', 'Petrovna', 'Cashier', 1200, '1978-07-24', '2000-05-15', '+380509876543', 'Lviv', 'Stepana Bandery', '00120'),
+(1003, 'Savchuk', 'Yevheniya', 'Olehivna', 'Cashier', 500, '1992-09-11', '2014-03-20', '+380974567898', 'Odessa', 'Morska', '00130'),
+(1004, 'Shevchenko', 'Mykola', 'Ivanovych', 'Cleaner', 510, '1986-05-02', '2007-12-10', '+380681234567', 'Kharkiv', 'Poltavskyi', '00140'),
+(1005, 'Krushenytska', 'Iryna', 'Mykolayivna', 'Manager', 2000, '1989-09-30', '2010-05-07', '+380996754321', 'Zaporizhzhia', 'Shevchenka', '00150');
+
+-- Fill User table
+INSERT INTO user(username, password, id_employee) VALUES
+('cashier01', 'password', 1001),
+('cashier02', 'qwerty', 1002),
+('manager01', 'pumpumpum', 1005);
 
 -- Fill Customer_Card table
 INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent) VALUES 
