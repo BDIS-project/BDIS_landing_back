@@ -110,8 +110,8 @@ class CategoriesAPIView(APIView):
 
         result = [dict(zip(category_names, category)) for category in categories]
 
-        return Response(result, status=status.HTTP_200_OK)
-    
+        return Response(result, status=status.HTTP_200_OK) 
+
 
 class ProductsAPIView(APIView):
     """
@@ -131,7 +131,8 @@ class ProductsAPIView(APIView):
         result = [dict(zip(products_names, product)) for product in products]
 
         return Response(result, status=status.HTTP_200_OK)
-        
+
+
 class StoreOverviewAPIView(APIView):
     """
     API view to look over store using raw SQL for Manager.
@@ -149,62 +150,88 @@ class StoreOverviewAPIView(APIView):
         products = request.GET.get('products')
         store_products = request.GET.get('store-products')
         sort_by = request.GET.get('sort-by')
-        promotional_products = request.GET.get('promotional-products')
-        non_promotional_products = request.GET.get('non-promotional-products')
+        promotional = request.GET.get('promotional')
+        non_promotional = request.GET.get('non-promotional')
         upc = request.GET.get('upc')
 
+        sorter = "product_name"
+        if sort_by:
+            if sort_by == 'products-desc':
+                sorter = "product_name DESC"
+            elif sort_by == 'products-asc':
+                sorter = "product_name"
+            elif sort_by == 'price-desc':
+                sorter = "selling_price DESC"
+            elif sort_by == 'price-asc':
+                sorter = "selling_price"
+            elif sort_by == 'numbers-desc':
+                sorter = "products_number DESC"
+            else:
+                sorter = "products_number"
 
         query = []
         params = []
 
-        if employee:
+        if employee is not None:
             query = ["SELECT * FROM Employee"] # Get all employees sorted by surname
             if role:
                 query.append("WHERE empl_role = %s") # Get all cashiers sorted by surname
                 params.append(role)
-            query.append("ORDER BY empl_surname;")  
+            query.append("ORDER BY empl_surname;")
         elif employee_surname: # Get employee address and phone number by surname
-            query = ["SELECT city, street, phone_number ",
-                     "FROM Employee ",
-                     "WHERE empl_surname = %s"]
+            query = [
+                "SELECT city, street, phone_number ",
+                "FROM Employee ",
+                "WHERE empl_surname = %s"
+            ]
             params.append(employee_surname)
-        elif customer: # Get all regular customers 
+        elif customer is not None: # Get all regular customers 
             query = ["SELECT * FROM Customer_Card"]
             if percent:
                 query.append("WHERE percent = %s")
                 params.append(percent)
-            query.append("ORDER BY cust_surname;")  
-        elif categories:
+            query.append("ORDER BY cust_surname;")
+        elif categories is not None:
             query = ["SELECT * FROM Category ORDER BY category_name;"]
-        elif products:
-            query = ["SELECT Product.*, category_name "
-                     "FROM Product INNER JOIN Category ON Product.category_number = Category.category_number "]
-            if(category):
+        elif products is not None:
+            query = [
+                "SELECT Product.*, category_name ",
+                "FROM Product INNER JOIN Category ON Product.category_number = Category.category_number "
+            ]
+            if category:
                 query.append("WHERE category_name = %s ")
                 params.append(category)
-        elif store_products:
-            query = ["SELECT Store_Product.*, product_name, category_name "
-            "FROM Store_Product "
-            "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
-            "INNER JOIN Category ON Product.category_number = Category.category_number "]
-            if promotional_products:
-                query.append("WHERE promotional_product = TRUE ")
-            elif non_promotional_products:
-                query.append("WHERE promotional_product = FALSE ")
+        elif store_products is not None:
+            query = [
+                "SELECT Store_Product.*, product_name, category_name ",
+                "FROM Store_Product ",
+                "INNER JOIN Product ON Store_Product.id_product = Product.id_product ",
+                "INNER JOIN Category ON Product.category_number = Category.category_number "
+            ]
+            if promotional:
+                query.append("WHERE promotional_product = TRUE")
+            elif non_promotional:
+                query.append("WHERE promotional_product = FALSE")
             if sort_by:
-                query.append("ORDER BY %s;")
-                params.append(sort_by)
+                query.append(f"ORDER BY {sorter};")
             else:
                 query.append("ORDER BY product_name")
-        elif upc: 
-            query = ["SELECT product_name, selling_price, products_number, characteristics "
-            "FROM Store_Product "
-            "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
-            "WHERE upc = %s"]
+        elif upc:
+            query = [
+                "SELECT product_name, selling_price, products_number, characteristics ",
+                "FROM Store_Product ",
+                "INNER JOIN Product ON Store_Product.id_product = Product.id_product ",
+                "WHERE upc = %s;"
+            ]
             params.append(upc)
 
+        if not query:
+            return Response({"error": "No query to execute"}, status=status.HTTP_400_BAD_REQUEST)
+
+        final_query = " ".join(query)
+
         with connection.cursor() as cursor:
-            cursor.execute(query, params)
+            cursor.execute(final_query, params)
             rows = cursor.fetchall()
             columns = [col[0] for col in cursor.description]
 
@@ -219,7 +246,6 @@ class StoreOverviewAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
 
-        
 
 class LoginView(APIView):
     @method_decorator(csrf_exempt)
@@ -251,16 +277,19 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class LogoutView(APIView):
     def post(self, request):
         request.auth.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class CashierView(APIView):
     permission_classes = [IsAuthenticated, IsCashier]
 
     def get(self, request):
         return Response({'message': 'Hello, Cashier!'})
+
 
 class ManagerView(APIView):
     permission_classes = [IsAuthenticated, IsManager]
