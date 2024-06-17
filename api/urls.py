@@ -9,6 +9,6 @@ urlpatterns = [
     path('products', ProductsAPIView.as_view(), name = 'products'),
     path('store-products', StoreProductsAPIView.as_view(), name='store-products'),
     path('categories', CategoriesAPIView.as_view(), name='get_categories'),
-    path('api/login/', LoginView.as_view(), name='login'),
-    path('api/logout/', LogoutView.as_view(), name='logout'),
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
 ]

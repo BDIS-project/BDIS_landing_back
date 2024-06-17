@@ -106,10 +106,10 @@ CREATE TABLE Employee (
     zip_code VARCHAR(9) NOT NULL 
 ); 
 
-CREATE TABLE User (
+CREATE TABLE User_Table (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
+    user_password VARCHAR(255) NOT NULL,
     id_employee VARCHAR(10) NOT NULL, 
     FOREIGN KEY (id_employee) REFERENCES Employee(id_employee) 
         ON UPDATE CASCADE 

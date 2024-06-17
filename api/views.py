@@ -1,8 +1,9 @@
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
+from types import SimpleNamespace
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.decorators import method_decorator
@@ -12,6 +13,7 @@ import hashlib
 from .permissions import IsCashier, IsManager
 
 class StoreProductsAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsCashier]
     """
     API view to retrieve store products using raw SQL.
     """
@@ -130,24 +132,29 @@ class ProductsAPIView(APIView):
         
         
 class LoginView(APIView):
+    permission_classes = [AllowAny]  # Allow unauthorized access
     @method_decorator(csrf_exempt)
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
         
         # Hash the password before checking it against the database
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        #hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id, username, role FROM Users WHERE username = %s AND password = %s",
-                [username, hashed_password]
+                "SELECT user_id, username, Employee.empl_role "
+                "FROM User_Table "
+                "INNER JOIN Employee ON Employee.id_employee = User_Table.id_employee "
+                "WHERE username = %s AND user_password = %s",
+                [username, password]
             )
             user = cursor.fetchone()
         
         if user:
             user_id, username, role = user
-            refresh = RefreshToken.for_user(user)
+            simple_user = SimpleNamespace(id=user_id, username=username, role=role)
+            refresh = RefreshToken.for_user(simple_user)
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -176,4 +183,3 @@ class ManagerView(APIView):
 
     def get(self, request):
         return Response({'message': 'Hello, Manager!'})
-      
