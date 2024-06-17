@@ -51,8 +51,8 @@ INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, emp
 (1004, 'Shevchenko', 'Mykola', 'Ivanovych', 'Cleaner', 510, '1986-05-02', '2007-12-10', '+380681234567', 'Kharkiv', 'Poltavskyi', '00140'),
 (1005, 'Krushenytska', 'Iryna', 'Mykolayivna', 'Manager', 2000, '1989-09-30', '2010-05-07', '+380996754321', 'Zaporizhzhia', 'Shevchenka', '00150');
 
--- Fill User table
-INSERT INTO user(username, password, id_employee) VALUES
+-- Fill User_Table table
+INSERT INTO User_Table(username, user_password, id_employee) VALUES
 ('cashier01', 'password', 1001),
 ('cashier02', 'qwerty', 1002),
 ('manager01', 'pumpumpum', 1005);
