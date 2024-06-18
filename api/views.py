@@ -11,6 +11,65 @@ import hashlib
 
 from .permissions import IsCashier, IsManager
 
+
+class CheckOverviewAPIView(APIView):
+    
+    permission_classes = [IsCashier, IsManager]
+
+    # касира за день(від зараз - 24 год)
+    # касир за проміжок часу (від start_date - end_date)
+    # вся інформація про заданий чек
+
+    def get(self, request, *args, **kwargs):
+        last_day = request.GET.get('last_day')
+        complete_check_info = request.GET.get('complete_check_info')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+       
+        query_conditions = []
+        params = []
+
+        base_query = "SELECT * FROM Check_Table"
+
+        if complete_check_info:
+            parts = [
+                'SELECT Sale.UPC, Store_Product.id_product, Product.product_name, Store_Product.selling_price, Sale.selling_price AS selling_price_at_sale, Sale.product_number ',
+                'FROM Sale INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC INNER JOIN Product ON Store_Product.id_product = Product.id_product ',
+                'WHERE Sale.check_number = %s '
+            ]
+            base_query = "".join(parts)   
+            params.append(complete_check_info)
+
+        elif last_day:
+            base_query = "SELECT * FROM Check_Table WHERE print_date BETWEEN CURRENT_DATE - INTERVAL '1 day' AND CURRENT_DATE"
+            params.append(last_day)    
+
+        elif start_date and end_date:
+            base_query = "SELECT * FROM Check_Table WHERE print_date BETWEEN %s AND %s"
+            params.append(start_date)
+            params.append(end_date)
+
+        elif start_date:     
+            base_query = "SELECT * FROM Check_Table WHERE print_date >= %s AND print_date <= NOW()"
+            params.append(start_date)
+
+        elif end_date:
+            base_query = "SELECT * FROM Check_Table WHERE print_date <= %s AND print_date >= NOW()"
+            params.append(end_date)
+
+        query = base_query + ';'
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            checks = cursor.fetchall()
+            check_number = [col[0] for col in cursor.description]
+
+        result = [dict(zip(check_number, check)) for check in checks]
+
+        return Response(result, status=status.HTTP_200_OK) 
+
+
+
 class StoreProductsAPIView(APIView):
     """
     API view to retrieve store products using raw SQL.
