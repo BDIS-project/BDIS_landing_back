@@ -16,10 +16,6 @@ class CheckOverviewAPIView(APIView):
     
     permission_classes = [IsCashier, IsManager]
 
-    # касира за день(від зараз - 24 год)
-    # касир за проміжок часу (від start_date - end_date)
-    # вся інформація про заданий чек   
-
     def get(self, request, *args, **kwargs):
         last_day = request.GET.get('last_day')
         complete_check_info = request.GET.get('complete_check_info')
