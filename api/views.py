@@ -18,7 +18,7 @@ class CheckOverviewAPIView(APIView):
 
     # касира за день(від зараз - 24 год)
     # касир за проміжок часу (від start_date - end_date)
-    # вся інформація про заданий чек
+    # вся інформація про заданий чек   
 
     def get(self, request, *args, **kwargs):
         last_day = request.GET.get('last_day')
@@ -26,7 +26,6 @@ class CheckOverviewAPIView(APIView):
         start_date = request.GET.get('start_date')
         end_date = request.GET.get('end_date')
         
-       
         query_conditions = []
         params = []
 
@@ -67,8 +66,7 @@ class CheckOverviewAPIView(APIView):
         result = [dict(zip(check_number, check)) for check in checks]
 
         return Response(result, status=status.HTTP_200_OK) 
-
-
+    
 
 class StoreProductsAPIView(APIView):
     """
