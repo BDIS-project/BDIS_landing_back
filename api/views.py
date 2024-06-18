@@ -32,16 +32,117 @@ class CreateCategoryAPIView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
-
 class CreateProductAPIView(APIView):
-    pass
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        category_number = request.data.get('category-number')
+        product_name = request.data.get('name')
+        characteristics = request.data.get('characteristics')
+        picture = request.data.get('picture', None)
 
+        if not category_number or not product_name or not characteristics:
+            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        query = """
+        INSERT INTO Product (category_number, product_name, characteristics, picture)
+        VALUES (%s, %s, %s, %s);
+        """
+        vals = [category_number, product_name, characteristics, picture]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Product created successfully'}, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({'error': 'Product could not be created due to integrity error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ProductNamesAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        query = "SELECT id_product, product_name FROM Product ORDER BY product_name;"
+        
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            products = cursor.fetchall()
+            product_names = [col[0] for col in cursor.description]
+
+        result = [dict(zip(product_names, product)) for product in products]
+
+        return Response(result, status=status.HTTP_200_OK)
+    
 class CreateStoreProductAPIView(APIView):
-    pass
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        UPC = request.data.get('UPC')
+        UPC_prom = request.data.get('UPC-prom', None)
+        id_product = request.data.get('id')
+        selling_price = request.data.get('price')
+        products_number = request.data.get('products-number')
+        expire_date = request.data.get('expire-date')
+        promotional_product = request.data.get('promotional')
+
+        if not all([UPC, id_product, selling_price, products_number, expire_date, promotional_product is not None]):
+            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        query = """
+        INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product)
+        VALUES (%s, %s, %s, %s, %s, %s, %s);
+        """
+        vals = [UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Store Product created successfully'}, status=status.HTTP_201_CREATED)
+        except IntegrityError as e:
+            return Response({'error': 'Store Product could not be created due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 class CreateEmployeeAPIView(APIView):
-    pass
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        id_employee = request.data.get('id')
+        empl_surname = request.data.get('surname')
+        empl_name = request.data.get('name')
+        empl_patronymic = request.data.get('patronymic')
+        empl_role = request.data.get('role')
+        salary = request.data.get('salary')
+        date_of_birth = request.data.get('birth')
+        date_of_start = request.data.get('start')
+        phone_number = request.data.get('phone')
+        city = request.data.get('city', None)
+        street = request.data.get('street', None)
+        zip_code = request.data.get('zip-code', None)
+
+        if (not id_employee or not empl_surname or not empl_name or not empl_patronymic or not empl_role 
+        or not salary or not date_of_birth or not date_of_start or not phone_number or not city or not street or not zip_code):
+            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        
+        query = """
+        INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary, date_of_birth, 
+        date_of_start, phone_number, city, street, zip_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        """
+        
+
+        vals = [id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary, 
+                date_of_birth, date_of_start, phone_number, city, street, zip_code]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Employee created successfully'}, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({'error': 'Employee could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CreateCustomerAPIView(APIView):
     permission_classes = [AllowAny]
@@ -59,7 +160,9 @@ class CreateCustomerAPIView(APIView):
         if not card_number or not cust_surname or not cust_name or not phone_number or not percent:
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
         
-        query = "INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        query = """
+        INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city,
+          street, zip_code, percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
         
 
         vals = [card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent]
@@ -209,14 +312,13 @@ class StoreProductsAPIView(APIView):
 
 
 class CategoriesAPIView(APIView):
-    
     """
     API view to retrieve all categories using raw SQL.
     """
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
-        query = "SELECT category_name FROM Category ORDER BY category_name;"
+        query = "SELECT category_number, category_name FROM Category ORDER BY category_name;"
         
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -225,7 +327,7 @@ class CategoriesAPIView(APIView):
 
         result = [dict(zip(category_names, category)) for category in categories]
 
-        return Response(result, status=status.HTTP_200_OK) 
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class ProductsAPIView(APIView):
