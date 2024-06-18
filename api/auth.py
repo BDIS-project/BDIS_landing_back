@@ -6,13 +6,16 @@ class JWTAuthentication(BaseJWTAuthentication):
     def get_raw_token(self, request):
         auth_header = request.headers.get('Authorization', None)
         if not auth_header:
-            raise AuthenticationFailed('Authorization header not found')
+            return None
+            #raise AuthenticationFailed('Authorization header not found')
 
         parts = auth_header.split()
-        if parts[0].lower() != 'Bearer':
-            raise AuthenticationFailed('Invalid token header')
+        if parts[0].lower() != 'bearer':
+            #raise AuthenticationFailed('Invalid token header')
+            return None
         if len(parts) == 1:
-            raise AuthenticationFailed('Token not found')
+            #raise AuthenticationFailed('Token not found')
+            return None
         elif len(parts) > 2:
             raise AuthenticationFailed('Invalid token header')
 
@@ -38,12 +41,15 @@ class JWTAuthentication(BaseJWTAuthentication):
                 'id': user_id,
                 'username': username,
                 'role': role,
+                'is_authenticated': True
             }
         else:
             raise InvalidToken('User not found or token is invalid.')
 
     def authenticate(self, request):
         raw_token = self.get_raw_token(request)
+        if raw_token is None:
+            return None
         validated_token = self.get_validated_token(raw_token)
         user = self.get_user(validated_token)
         return user, validated_token

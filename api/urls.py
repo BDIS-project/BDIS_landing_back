@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import * 
-from rest_framework_simplejwt import views as jwt_views
+from api.views import * 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
 from django.contrib import admin

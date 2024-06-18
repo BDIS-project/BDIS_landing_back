@@ -1,7 +1,7 @@
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+#from rest_framework.permissions import AllowAny
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import status
 from types import SimpleNamespace
@@ -13,20 +13,20 @@ import hashlib
 
 import logging
 
-from .permissions import IsCashier, IsManager
+from api.permissions import (
+    IsAuthenticated,
+    AllowAny,
+    IsCashier, 
+    IsManager, 
+    IsCashierOrManager 
+)
 
 class StoreProductsAPIView(APIView):
-    authentication_classes = [TokenAuthentication]
-    #permission_classes = [AllowAny]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsCashierOrManager]
     """
     API view to retrieve store products using raw SQL.
     """
     def get(self, request, *args, **kwargs):
-
-        logging.info(f"Request Headers: {request.headers}")
-        logging.info(f"Request Headers: {request.user}")
-        logging.info(f"Query Parameters: {request.query_params}")
         
         upc = request.GET.get('upc')
         product_name = request.GET.get('product_name')
@@ -108,7 +108,7 @@ class StoreProductsAPIView(APIView):
 
 
 class CategoriesAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsCashier]
+    permission_classes = [IsCashierOrManager]
     """
     API view to retrieve all categories using raw SQL.
     """
@@ -125,6 +125,7 @@ class CategoriesAPIView(APIView):
 
 
 class ProductsAPIView(APIView):
+    permission_classes = [IsCashierOrManager]
     """
     API view to retrive products using raw sql
     """
@@ -191,13 +192,13 @@ class LogoutView(APIView):
 
 
 class CashierView(APIView):
-    permission_classes = [IsAuthenticated, IsCashier]
+    permission_classes = [IsCashier]
 
     def get(self, request):
         return Response({'message': 'Hello, Cashier!'})
 
 class ManagerView(APIView):
-    permission_classes = [IsAuthenticated, IsManager]
+    permission_classes = [IsManager]
 
     def get(self, request):
         return Response({'message': 'Hello, Manager!'})
