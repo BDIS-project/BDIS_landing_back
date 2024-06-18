@@ -2,6 +2,7 @@ from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 from rest_framework import status
 from types import SimpleNamespace
 
@@ -15,11 +16,18 @@ import logging
 from .permissions import IsCashier, IsManager
 
 class StoreProductsAPIView(APIView):
-    permission_classes = [IsAuthenticated, IsCashier]
+    authentication_classes = [TokenAuthentication]
+    #permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     """
     API view to retrieve store products using raw SQL.
     """
     def get(self, request, *args, **kwargs):
+
+        logging.info(f"Request Headers: {request.headers}")
+        logging.info(f"Request Headers: {request.user}")
+        logging.info(f"Query Parameters: {request.query_params}")
+        
         upc = request.GET.get('upc')
         product_name = request.GET.get('product_name')
         promotional = request.GET.get('promotional')
@@ -80,7 +88,7 @@ class StoreProductsAPIView(APIView):
         if in_stock:
             query_conditions.append("AND products_number > 0")
 
-        query = base_query + ' '.join(query_conditions) + f" ORDER BY {sorter};"
+        query = base_query + ' '.join(query_conditions) + ";"
 
         with connection.cursor() as cursor:
             cursor.execute(query, params)
@@ -157,7 +165,12 @@ class LoginView(APIView):
         
         if user:
             user_id, username, role = user
-            simple_user = SimpleNamespace(id=user_id, username=username, role=role)
+            simple_user = SimpleNamespace(
+                id=user_id,
+                username=username,
+                role=role,
+                is_authenticated=True
+            )
             refresh = RefreshToken.for_user(simple_user)
             return Response({
                 'refresh': str(refresh),
@@ -193,4 +206,6 @@ class TestTokenView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        logger = logging.getLogger(__name__)
+        logger.info("TestTokenView accessed with token: %s", request.auth)
         return Response({'message': 'Token is valid'}, status=status.HTTP_200_OK)
