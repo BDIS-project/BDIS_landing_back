@@ -177,7 +177,20 @@ class CreateCustomerAPIView(APIView):
 
 class DeleteCategoryAPIView(APIView):
     permission_classes = [AllowAny]
-    pass
+
+    def delete(self, request, category_number, *args, **kwargs):
+        query = "DELETE FROM Category WHERE category_number = %s;"
+        vals = [category_number]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Category deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Category could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 class DeleteCProductAPIView(APIView):
     permission_classes = [AllowAny]
@@ -206,7 +219,7 @@ class DeleteCustomerAPIView(APIView):
     permission_classes = [AllowAny]
     pass
 
-class DeleteCategoryAPIView(APIView):
+class DeleteCheckAPIView(APIView):
     permission_classes = [AllowAny]
     pass
 

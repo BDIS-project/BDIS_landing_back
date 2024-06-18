@@ -21,10 +21,10 @@ urlpatterns = [
     path('create-store-product', CreateStoreProductAPIView.as_view(), name = 'create-store-product'),
     path('create-employee', CreateEmployeeAPIView.as_view(), name = 'create-employee'),
     path('create-customer', CreateCustomerAPIView.as_view(), name = 'create-customer'),
-    path('delete-category', DeleteCategoryAPIView.as_view(), name = 'delete-category'),
 
+    path('delete-category/<int:category_number>/', DeleteCategoryAPIView.as_view(), name='delete-category'),
     path('delete-product/<int:id_product>/', DeleteCProductAPIView.as_view(), name = 'delete-product'),
-    path('delete-store-product', DeleteStoreProductAPIView.as_view(), name = 'delete-store-product'),
+    path('delete-store-product/', DeleteStoreProductAPIView.as_view(), name = 'delete-store-product'),
     path('delete-employee', DeleteEmployeeAPIView.as_view(), name = 'delete-employee'),
     path('delete-customer', DeleteCustomerAPIView.as_view(), name = 'delete-customer'),
 ]
