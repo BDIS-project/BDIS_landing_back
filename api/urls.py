@@ -14,4 +14,9 @@ urlpatterns = [
     path('api/logout/', LogoutView.as_view(), name='logout'),
     path('store-overview/', StoreOverviewAPIView.as_view(), name = 'store-overview'),
     path('check-overview', CheckOverviewAPIView.as_view(), name = 'check-overview'),
+    path('create-category', CreateCategoryAPIView.as_view(), name = 'create-category'),
+    path('create-product', CreateProductAPIView.as_view(), name = 'create-product'),
+    path('create-store-product', CreateStoreProductAPIView.as_view(), name = 'create-store-product'),
+    path('create-employee', CreateEmployeeAPIView.as_view(), name = 'create-employee'),
+    path('create-customer', CreateCustomerAPIView.as_view(), name = 'create-customer'),
 ]

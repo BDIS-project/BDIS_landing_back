@@ -1,4 +1,4 @@
-from django.db import connection
+from django.db import connection, IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -7,10 +7,71 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 import hashlib
 
 from .permissions import IsCashier, IsManager
 
+class CreateCategoryAPIView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        category_name = request.data.get('category-name')
+
+        if not category_name:
+            return Response({'error': 'Category name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        query = "INSERT INTO Category (category_name) VALUES (%s);"
+        vals = [category_name]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Category created successfully'}, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({'error': 'Category could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
+
+class CreateProductAPIView(APIView):
+    pass
+
+class CreateStoreProductAPIView(APIView):
+    pass
+
+class CreateEmployeeAPIView(APIView):
+    pass
+
+class CreateCustomerAPIView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request, *args, **kwargs):
+        card_number = request.data.get('card-number')
+        cust_surname = request.data.get('surname')
+        cust_name = request.data.get('name')
+        cust_patronymic = request.data.get('patronymic')
+        phone_number = request.data.get('phone')
+        city = request.data.get('city', None)
+        street = request.data.get('street', None)
+        zip_code = request.data.get('zip-code', None)
+        percent = request.data.get('percent')
+
+        if not card_number or not cust_surname or not cust_name or not phone_number or not percent:
+            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        query = "INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        
+
+        vals = [card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Customer Card created successfully'}, status=status.HTTP_201_CREATED)
+        except IntegrityError:
+            return Response({'error': 'Customer Card could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CheckOverviewAPIView(APIView):
     
@@ -148,6 +209,7 @@ class StoreProductsAPIView(APIView):
 
 
 class CategoriesAPIView(APIView):
+    
     """
     API view to retrieve all categories using raw SQL.
     """
