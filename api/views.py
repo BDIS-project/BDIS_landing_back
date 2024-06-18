@@ -104,7 +104,6 @@ class CreateStoreProductAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 class CreateEmployeeAPIView(APIView):
     permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
@@ -175,6 +174,42 @@ class CreateCustomerAPIView(APIView):
             return Response({'error': 'Customer Card could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DeleteCategoryAPIView(APIView):
+    permission_classes = [AllowAny]
+    pass
+
+class DeleteCProductAPIView(APIView):
+    permission_classes = [AllowAny]
+    def delete(self, request, id_product, *args, **kwargs):
+        query = "DELETE FROM Product WHERE id_product = %s;"
+        vals = [id_product]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Product deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Product could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DeleteStoreProductAPIView(APIView):
+    permission_classes = [AllowAny]
+    pass
+
+class DeleteEmployeeAPIView(APIView):
+    permission_classes = [AllowAny]
+    pass
+
+class DeleteCustomerAPIView(APIView):
+    permission_classes = [AllowAny]
+    pass
+
+class DeleteCategoryAPIView(APIView):
+    permission_classes = [AllowAny]
+    pass
+
 
 class CheckOverviewAPIView(APIView):
     
