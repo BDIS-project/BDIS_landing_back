@@ -209,7 +209,18 @@ class DeleteCProductAPIView(APIView):
 
 class DeleteStoreProductAPIView(APIView):
     permission_classes = [AllowAny]
-    pass
+    def delete(self, request, UPC, *args, **kwargs):
+        query = "DELETE FROM Store_Product WHERE UPC = %s;"
+        vals = [UPC]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Store Product deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Store Product could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteEmployeeAPIView(APIView):
     permission_classes = [AllowAny]
