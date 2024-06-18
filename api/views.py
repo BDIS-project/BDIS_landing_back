@@ -190,9 +190,9 @@ class DeleteCategoryAPIView(APIView):
             return Response({'error': 'Category could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+      
 
-class DeleteCProductAPIView(APIView):
+class DeleteProductAPIView(APIView):
     permission_classes = [AllowAny]
     def delete(self, request, id_product, *args, **kwargs):
         query = "DELETE FROM Product WHERE id_product = %s;"
@@ -224,11 +224,34 @@ class DeleteStoreProductAPIView(APIView):
 
 class DeleteEmployeeAPIView(APIView):
     permission_classes = [AllowAny]
-    pass
+    def delete(self, request, id_employee, *args, **kwargs):
+        query = "DELETE FROM Employee WHERE id_employee = %s;"
+        vals = [id_employee]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Employee deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Employee could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteCustomerAPIView(APIView):
     permission_classes = [AllowAny]
-    pass
+    permission_classes = [AllowAny]
+    def delete(self, request, card_number, *args, **kwargs):
+        query = "DELETE FROM Customer_Card WHERE card_number = %s;"
+        vals = [card_number]
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Customer Card deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Customer Card could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteCheckAPIView(APIView):
     permission_classes = [AllowAny]

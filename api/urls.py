@@ -23,9 +23,9 @@ urlpatterns = [
     path('create-customer', CreateCustomerAPIView.as_view(), name = 'create-customer'),
 
     path('delete-category/<int:category_number>/', DeleteCategoryAPIView.as_view(), name='delete-category'),
-    path('delete-product/<int:id_product>/', DeleteCProductAPIView.as_view(), name = 'delete-product'),
+    path('delete-product/<int:id_product>/', DeleteProductAPIView.as_view(), name = 'delete-product'),
     path('delete-store-product/<str:UPC>/', DeleteStoreProductAPIView.as_view(), name = 'delete-store-product'),
-    path('delete-employee', DeleteEmployeeAPIView.as_view(), name = 'delete-employee'),
-    path('delete-customer', DeleteCustomerAPIView.as_view(), name = 'delete-customer'),
+    path('delete-employee/<str:id_employee>/', DeleteEmployeeAPIView.as_view(), name = 'delete-employee'),
+    path('delete-customer/<str:card_number>/', DeleteCustomerAPIView.as_view(), name = 'delete-customer'),
     path('delete-check', DeleteCheckAPIView.as_view(), name = 'delete-check')
 ]
