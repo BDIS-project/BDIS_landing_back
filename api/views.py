@@ -13,16 +13,21 @@ import hashlib
 from .permissions import IsCashier, IsManager
 
 class CreateCategoryAPIView(APIView):
+    """
+    API view to create Categories for MANAGER
+    """
     permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
         category_name = request.data.get('category-name')
 
+        # check if all neccesary parameters are present
         if not category_name:
             return Response({'error': 'Category name is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         query = "INSERT INTO Category (category_name) VALUES (%s);"
         vals = [category_name]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -33,6 +38,9 @@ class CreateCategoryAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CreateProductAPIView(APIView):
+    """
+    API view to create Products for MANAGER
+    """
     permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
         category_number = request.data.get('category-number')
@@ -40,6 +48,7 @@ class CreateProductAPIView(APIView):
         characteristics = request.data.get('characteristics')
         picture = request.data.get('picture', None)
 
+        # check if all neccesary parameters are present
         if not category_number or not product_name or not characteristics:
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -49,6 +58,7 @@ class CreateProductAPIView(APIView):
         """
         vals = [category_number, product_name, characteristics, picture]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -59,6 +69,9 @@ class CreateProductAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProductNamesAPIView(APIView):
+    """
+    API view to retrive Products names and pk DROPDOWN LIST for MANAGER
+    """
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
@@ -74,6 +87,9 @@ class ProductNamesAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
     
 class CreateStoreProductAPIView(APIView):
+    """
+    API view to create Store Products for MANAGER
+    """
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -85,6 +101,7 @@ class CreateStoreProductAPIView(APIView):
         expire_date = request.data.get('expire-date')
         promotional_product = request.data.get('promotional')
 
+        # check if all neccesary parameters are present
         if not all([UPC, id_product, selling_price, products_number, expire_date, promotional_product is not None]):
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -94,6 +111,7 @@ class CreateStoreProductAPIView(APIView):
         """
         vals = [UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -105,6 +123,9 @@ class CreateStoreProductAPIView(APIView):
 
 
 class CreateEmployeeAPIView(APIView):
+    """
+    API view to create Employee for MANAGER
+    """
     permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
         id_employee = request.data.get('id')
@@ -120,6 +141,7 @@ class CreateEmployeeAPIView(APIView):
         street = request.data.get('street', None)
         zip_code = request.data.get('zip-code', None)
 
+        # check if all neccesary parameters are present
         if (not id_employee or not empl_surname or not empl_name or not empl_patronymic or not empl_role 
         or not salary or not date_of_birth or not date_of_start or not phone_number or not city or not street or not zip_code):
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
@@ -130,10 +152,10 @@ class CreateEmployeeAPIView(APIView):
         date_of_start, phone_number, city, street, zip_code) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
         
-
         vals = [id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary, 
                 date_of_birth, date_of_start, phone_number, city, street, zip_code]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -142,8 +164,12 @@ class CreateEmployeeAPIView(APIView):
             return Response({'error': 'Employee could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 class CreateCustomerAPIView(APIView):
+    """
+    API view to create Customer Card for MANAGER and CASHIER
+    """
     permission_classes = [AllowAny]
     def post(self, request, *args, **kwargs):
         card_number = request.data.get('card-number')
@@ -156,6 +182,7 @@ class CreateCustomerAPIView(APIView):
         zip_code = request.data.get('zip-code', None)
         percent = request.data.get('percent')
 
+        # check if all neccesary parameters are present
         if not card_number or not cust_surname or not cust_name or not phone_number or not percent:
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -166,6 +193,7 @@ class CreateCustomerAPIView(APIView):
 
         vals = [card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -176,12 +204,16 @@ class CreateCustomerAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteCategoryAPIView(APIView):
+    """
+    API view to delete Category for MANAGER
+    """
     permission_classes = [AllowAny]
 
     def delete(self, request, category_number, *args, **kwargs):
         query = "DELETE FROM Category WHERE category_number = %s;"
         vals = [category_number]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -193,11 +225,15 @@ class DeleteCategoryAPIView(APIView):
       
 
 class DeleteProductAPIView(APIView):
+    """
+    API view to delete Product for MANAGER
+    """
     permission_classes = [AllowAny]
     def delete(self, request, id_product, *args, **kwargs):
         query = "DELETE FROM Product WHERE id_product = %s;"
         vals = [id_product]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -208,11 +244,15 @@ class DeleteProductAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteStoreProductAPIView(APIView):
+    """
+    API view to delete Store Product for MANAGER
+    """
     permission_classes = [AllowAny]
     def delete(self, request, UPC, *args, **kwargs):
         query = "DELETE FROM Store_Product WHERE UPC = %s;"
         vals = [UPC]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -223,11 +263,15 @@ class DeleteStoreProductAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteEmployeeAPIView(APIView):
+    """
+    API view to delete Employee for MANAGER
+    """
     permission_classes = [AllowAny]
     def delete(self, request, id_employee, *args, **kwargs):
         query = "DELETE FROM Employee WHERE id_employee = %s;"
         vals = [id_employee]
 
+        # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -238,12 +282,16 @@ class DeleteEmployeeAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteCustomerAPIView(APIView):
-    permission_classes = [AllowAny]
+    """
+    API view to delete Customer Card for MANAGER
+    """
+
     permission_classes = [AllowAny]
     def delete(self, request, card_number, *args, **kwargs):
         query = "DELETE FROM Customer_Card WHERE card_number = %s;"
         vals = [card_number]
 
+         # return result of query execution
         try:
             with connection.cursor() as cursor:
                 cursor.execute(query, vals)
@@ -254,11 +302,17 @@ class DeleteCustomerAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DeleteCheckAPIView(APIView):
+    """
+    API view to delete Check for MANAGER
+    """
     permission_classes = [AllowAny]
     pass
 
 
 class CheckOverviewAPIView(APIView):
+    """
+    API view to retrieve store products using raw SQL for CASHIER
+    """
     
     permission_classes = [IsCashier, IsManager]
 
@@ -312,7 +366,7 @@ class CheckOverviewAPIView(APIView):
 
 class StoreProductsAPIView(APIView):
     """
-    API view to retrieve store products using raw SQL.
+    API view to retrieve store products using raw SQL for CASHIER
     """
     permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
@@ -395,7 +449,8 @@ class StoreProductsAPIView(APIView):
 
 class CategoriesAPIView(APIView):
     """
-    API view to retrieve all categories using raw SQL.
+    API view to retrieve all categories using raw SQL 
+    for MANAGER and CreateProductAPIView DROPDOWN LIST
     """
     permission_classes = [AllowAny]
 
@@ -414,7 +469,7 @@ class CategoriesAPIView(APIView):
 
 class ProductsAPIView(APIView):
     """
-    API view to retrive products using raw sql
+    API view to retrive products using raw sql FOR CASHIER
     """
     permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
@@ -434,7 +489,7 @@ class ProductsAPIView(APIView):
 
 class StoreOverviewAPIView(APIView):
     """
-    API view to look over store using raw SQL for Manager.
+    API view to look over store using raw SQL for MANAGER.
     """
     permission_classes = [AllowAny]
 
