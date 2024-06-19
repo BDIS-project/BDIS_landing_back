@@ -2,22 +2,22 @@
 INSERT INTO Category (category_name) VALUES 
 ('Vegetables'),
 ('Fruits'),
-('Dairy_products'),
+('Dairy products'),
 ('Meat'),
 ('Sweets');
 
 -- Fill Product table
-INSERT INTO Product (category_number, product_name, characteristics) VALUES 
-(1, 'Cucumber "Mirabella"', 'Green cucumber, variety "Mirabella"'),
-(1, 'Tomato', 'Red tomato'),
-(2, 'Banana', 'Yellow banana'),
-(2, 'Apple "Golden"', 'Green apple, variety "Golden"'),
-(3, 'Ryazhenka "Slovyanochka"', 'Product from baked milk'),
-(3, 'Milk "Yahotynske"', 'Milk, 5% fat content'),
-(4, 'Chicken fillet', 'Fresh fillet of young chicken'),
-(4, 'Pork ribs', 'Pork ribs'),
-(5, 'Cake "Napoleon"', 'Cake "Napoleon" by Roshen'),
-(5, 'Candies "Red Poppy"', 'Candies "Red Poppy" by Roshen');
+INSERT INTO Product (category_number, product_name, characteristics, picture) VALUES 
+(1, 'Cucumber "Mirabella"', 'Green cucumber, variety "Mirabella"', 'mirabella'),
+(1, 'Tomato', 'Red tomato', 'tomato'),
+(2, 'Banana', 'Yellow banana', 'banana'),
+(2, 'Apple "Golden"', 'Green apple, variety "Golden"', 'golden_apple'),
+(3, 'Ryazhenka "Slovyanochka"', 'Product from baked milk', 'slovyanochka_ryazhenka'),
+(3, 'Milk "Yahotynske"', 'Milk, 5% fat content', 'yahotynske_milk'),
+(4, 'Chicken fillet', 'Fresh fillet of young chicken', 'fillet'),
+(4, 'Pork ribs', 'Pork ribs', 'ribs'),
+(5, 'Cake "Napoleon"', 'Cake "Napoleon" by Roshen', 'napoleon'),
+(5, 'Candies "Red Poppy"', 'Candies "Red Poppy" by Roshen', 'red_poppy');
 
 -- Fill Store_Product table
 /*INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, promotional_product) VALUES 
@@ -54,9 +54,12 @@ INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, emp
 
 -- Fill User table
 INSERT INTO User_Table (username, user_password, id_employee) VALUES
-('cashier01', 'password', 1001),
-('cashier02', 'qwerty', 1002),
-('manager01', 'pumpumpum', 1005);
+-- ('cashier01', 'password', 1001),
+-- ('cashier02', 'qwerty', 1002),
+-- ('manager01', 'pumpumpum', 1005);
+('cashier01', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 1001),
+('cashier02', '65e84be33532fb784c48129675f9eff3a682b27168c0ea744b2cf58ee02337c5', 1002),
+('manager01', '5ef842ffab79fc80562e171977b093e8735b08e1b214d4d9624b40361da22ea6', 1005);
 
 -- Fill Customer_Card table
 INSERT INTO Customer_Card (card_number, cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent) VALUES 

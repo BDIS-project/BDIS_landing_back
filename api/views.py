@@ -1,12 +1,10 @@
 from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
-#from rest_framework.permissions import AllowAny
-from rest_framework.authentication import TokenAuthentication
 from rest_framework import status
 from types import SimpleNamespace
-
 from rest_framework_simplejwt.tokens import RefreshToken
+
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
@@ -20,6 +18,8 @@ from api.permissions import (
     IsManager, 
     IsCashierOrManager 
 )
+from api.auth import JWTAuthentication
+logger = logging.getLogger(__name__)
 
 class StoreProductsAPIView(APIView):
     permission_classes = [IsCashierOrManager]
@@ -152,7 +152,7 @@ class LoginView(APIView):
         password = request.data.get('password')
 
         # Hash the password before checking it against the database
-        #hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
         with connection.cursor() as cursor:
             cursor.execute(
@@ -160,7 +160,7 @@ class LoginView(APIView):
                 "FROM User_Table "
                 "INNER JOIN Employee ON Employee.id_employee = User_Table.id_employee "
                 "WHERE username = %s AND user_password = %s",
-                [username, password]
+                [username, hashed_password.lower()]
             )
             user = cursor.fetchone()
         
@@ -187,9 +187,19 @@ class LoginView(APIView):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        request.auth.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            refresh_token = request.data.get('refresh_token')
 
+            if not refresh_token:
+                return Response({"detail": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Blacklist the refresh token
+            JWTAuthentication().blacklist_token(refresh_token)
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            return Response({"detail": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=e)
 
 class CashierView(APIView):
     permission_classes = [IsCashier]
