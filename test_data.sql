@@ -1,9 +1,10 @@
 -- Fill Category table
-INSERT INTO Category (category_name) VALUES ('Vegetables');
-INSERT INTO Category (category_name) VALUES ('Fruits');
-INSERT INTO Category (category_name) VALUES ('Dairy_products');
-INSERT INTO Category (category_name) VALUES ('Meat');
-INSERT INTO Category (category_name) VALUES ('Sweets');
+INSERT INTO Category (category_name) VALUES 
+('Vegetables'),
+('Fruits'),
+('Dairy_products'),
+('Meat'),
+('Sweets');
 
 -- Fill Product table
 INSERT INTO Product (category_number, product_name, characteristics) VALUES 
