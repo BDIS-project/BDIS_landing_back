@@ -13,7 +13,7 @@ from .permissions import IsCashier, IsManager
 
 # adding edit functionality to the data base
 # tables: Category, Product, Store_Product, Employee, User_Table, Customer_Card, Check_Table, Sale
-# done:   Category, 
+# done:   Category, Product, Store_Product, 
 
 
 class ManagerStoreOverviewAPIView(APIView):
@@ -224,6 +224,56 @@ class StoreProductsAPIView(APIView):
             result.append(product)
 
         return Response(result, status=status.HTTP_200_OK)
+    
+    def post(self, request, *args, **kwargs):
+        UPC = request.data.get('UPC')
+        UPC_prom = request.data.get('UPC_prom')
+        id_product = request.data.get('id_product')
+        selling_price = request.data.get('selling_price')
+        products_number = request.data.get('products_number')
+        expire_date = request.data.get('expire_date')
+        promotional_product = request.data.get('promotional_product')
+
+        if not UPC or not id_product or not selling_price or not products_number or not expire_date or promotional_product is None:
+            return Response({"error": "UPC, id_product, selling_price, products_number, expire_date, and promotional_product are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        cursor = connection.cursor()
+
+        set_values = []
+        params = []
+
+        if UPC_prom is not None:
+            set_values.append("UPC_prom = %s")
+            params.append(UPC_prom)
+        if id_product is not None:
+            set_values.append("id_product = %s")
+            params.append(id_product)
+        if selling_price is not None:
+            set_values.append("selling_price = %s")
+            params.append(selling_price)
+        if products_number is not None:
+            set_values.append("products_number = %s")
+            params.append(products_number)
+        if expire_date is not None:
+            set_values.append("expire_date = %s")
+            params.append(expire_date)
+        if promotional_product is not None:
+            set_values.append("promotional_product = %s")
+            params.append(promotional_product)
+
+        query = f"""
+            UPDATE Store_Product
+            SET {', '.join(set_values)}
+            WHERE UPC = %s
+            RETURNING UPC;
+        """
+        params.append(UPC)
+
+        cursor.execute(query, params)
+        updated_UPC = cursor.fetchone()[0]
+        connection.commit()
+
+        return Response({"UPC": updated_UPC, "message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
 
 
 class CategoriesAPIView(APIView):
@@ -435,55 +485,7 @@ class StoreOverviewAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
     
-    def post(self, request, *args, **kwargs):
-        UPC = request.data.get('UPC')
-        UPC_prom = request.data.get('UPC_prom')
-        id_product = request.data.get('id_product')
-        selling_price = request.data.get('selling_price')
-        products_number = request.data.get('products_number')
-        expire_date = request.data.get('expire_date')
-        promotional_product = request.data.get('promotional_product')
-
-        if not UPC or not id_product or not selling_price or not products_number or not expire_date or promotional_product is None:
-            return Response({"error": "UPC, id_product, selling_price, products_number, expire_date, and promotional_product are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        cursor = connection.cursor()
-
-        set_values = []
-        params = []
-
-        if UPC_prom is not None:
-            set_values.append("UPC_prom = %s")
-            params.append(UPC_prom)
-        if id_product is not None:
-            set_values.append("id_product = %s")
-            params.append(id_product)
-        if selling_price is not None:
-            set_values.append("selling_price = %s")
-            params.append(selling_price)
-        if products_number is not None:
-            set_values.append("products_number = %s")
-            params.append(products_number)
-        if expire_date is not None:
-            set_values.append("expire_date = %s")
-            params.append(expire_date)
-        if promotional_product is not None:
-            set_values.append("promotional_product = %s")
-            params.append(promotional_product)
-
-        query = f"""
-            UPDATE Store_Product
-            SET {', '.join(set_values)}
-            WHERE UPC = %s
-            RETURNING UPC;
-        """
-        params.append(UPC)
-
-        cursor.execute(query, params)
-        updated_UPC = cursor.fetchone()[0]
-        connection.commit()
-
-        return Response({"UPC": updated_UPC, "message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
+    
 
 
 class LoginView(APIView):
