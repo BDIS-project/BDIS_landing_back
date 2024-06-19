@@ -149,7 +149,7 @@ class StoreProductsAPIView(APIView):
     """
     permission_classes = [AllowAny]
     def get(self, request, *args, **kwargs):
-        upc = request.GET.get('upc')
+        upc = request.GET.get('UPC')
         product_name = request.GET.get('product_name')
         promotional = request.GET.get('promotional')
         min_price = request.GET.get('minPrice')
@@ -280,26 +280,46 @@ class ProductsAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
     
     def post(self, request, *args, **kwargs):
+        id_product = request.data.get('id_product')
         category_number = request.data.get('category_number')
         product_name = request.data.get('product_name')
         characteristics = request.data.get('characteristics')
         picture = request.data.get('picture')
 
-        if not category_number or not product_name or not characteristics:
-            return Response({"error": "category_number, product_name, and characteristics are required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not id_product or (not category_number and not product_name and not characteristics and not picture):
+            return Response({"error": "At least one field (category_number, product_name, characteristics, picture) is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         cursor = connection.cursor()
 
-        query = """
-            INSERT INTO Product (category_number, product_name, characteristics, picture)
-            VALUES (%s, %s, %s, %s)
+        set_values = []
+        params = []
+
+        if category_number is not None:
+            set_values.append("category_number = %s")
+            params.append(category_number)
+        if product_name is not None:
+            set_values.append("product_name = %s")
+            params.append(product_name)
+        if characteristics is not None:
+            set_values.append("characteristics = %s")
+            params.append(characteristics)
+        if picture is not None:
+            set_values.append("picture = %s")
+            params.append(picture)
+
+        query = f"""
+            UPDATE Product
+            SET {', '.join(set_values)}
+            WHERE id_product = %s
             RETURNING id_product;
         """
-        cursor.execute(query, (category_number, product_name, characteristics, picture))
-        id_product = cursor.fetchone()[0]  # Get the id_product of the newly inserted row
+        params.append(id_product)
+
+        cursor.execute(query, params)
+        updated_id_product = cursor.fetchone()[0]
         connection.commit()
 
-        return Response({"id_product": id_product, "message": "Product created successfully"}, status=status.HTTP_201_CREATED)
+        return Response({"id_product": updated_id_product, "message": "Product updated successfully"}, status=status.HTTP_200_OK)
 
 
 class StoreOverviewAPIView(APIView):
@@ -429,16 +449,41 @@ class StoreOverviewAPIView(APIView):
 
         cursor = connection.cursor()
 
-        query = """
-            INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        set_values = []
+        params = []
+
+        if UPC_prom is not None:
+            set_values.append("UPC_prom = %s")
+            params.append(UPC_prom)
+        if id_product is not None:
+            set_values.append("id_product = %s")
+            params.append(id_product)
+        if selling_price is not None:
+            set_values.append("selling_price = %s")
+            params.append(selling_price)
+        if products_number is not None:
+            set_values.append("products_number = %s")
+            params.append(products_number)
+        if expire_date is not None:
+            set_values.append("expire_date = %s")
+            params.append(expire_date)
+        if promotional_product is not None:
+            set_values.append("promotional_product = %s")
+            params.append(promotional_product)
+
+        query = f"""
+            UPDATE Store_Product
+            SET {', '.join(set_values)}
+            WHERE UPC = %s
             RETURNING UPC;
         """
-        cursor.execute(query, (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product))
-        inserted_upc = cursor.fetchone()[0] 
+        params.append(UPC)
+
+        cursor.execute(query, params)
+        updated_UPC = cursor.fetchone()[0]
         connection.commit()
 
-        return Response({"UPC": inserted_upc, "message": "Store Product created successfully"}, status=status.HTTP_201_CREATED)
+        return Response({"UPC": updated_UPC, "message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
 
 
 class LoginView(APIView):

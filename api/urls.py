@@ -13,8 +13,8 @@ urlpatterns = [
     path('products/', ProductsAPIView.as_view(), name='get_products'),
     path('products/<int:id_product>/updateProduct/', ProductsAPIView.as_view(), name='update_product'),
 
-    path('store-products', StoreProductsAPIView.as_view(), name='store-products'),
-    #path('store-products/<str:UPC>/updateStoreProduct/', StoreProductsAPIView.as_view(), name='update_store-products'),
+    path('store-products/', StoreProductsAPIView.as_view(), name='get_store_products'),
+    path('store-products/<srt:UPC>/updateStoreProduct/', StoreProductsAPIView.as_view(), name='update_store_product'),
 
     path('api/login/', LoginView.as_view(), name='login'),
     path('api/logout/', LogoutView.as_view(), name='logout'),
