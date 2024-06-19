@@ -309,7 +309,8 @@ class AboutMeAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
-
+class ReportsAPIView(APIView):
+    pass
 
 class CreateCheckAPIView(APIView):
     pass
