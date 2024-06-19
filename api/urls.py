@@ -18,6 +18,7 @@ urlpatterns = [
     path('categories', CategoriesAPIView.as_view(), name='get_categories'), # CASHIER, DROPDOWN LIST
     path('product-names', ProductNamesAPIView.as_view(), name = 'product-names'), # DROPDOWN LIST
     path('store-overview/', StoreOverviewAPIView.as_view(), name = 'store-overview'), # MANAGER
+    path('about-me', AboutMeAPIView.as_view(), name = 'about-me'), # CASHIER
 
     # urls for entities creation for MANAGER
     path('create-category', CreateCategoryAPIView.as_view(), name = 'create-category'),

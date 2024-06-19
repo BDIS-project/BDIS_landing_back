@@ -271,6 +271,49 @@ class CreateCustomerAPIView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class AboutMeAPIView(APIView):
+    """
+    API view to rethrive all info about CASHIER
+    currently loggen in
+    """
+    permission_classes = [AllowAny]
+    def get(self, request, *args, **kwargs):
+        id_employee = request.GET.get('id')
+        employee_query = """SELECT * FROM EMPLOYEE
+        WHERE id_employee = %s;
+        """
+        check_query = """ SELECT * FROM Check_Table
+        WHERE id_employee = %s;
+        """
+        params = [id_employee]
+
+        with connection.cursor() as cursor:
+            cursor.execute(employee_query, params)
+            employee = cursor.fetchall()
+            employee_names = [col[0] for col in cursor.description]
+
+        employee_result = [dict(zip(employee_names, empl)) for empl in employee]
+
+        with connection.cursor() as cursor:
+            cursor.execute(check_query, params)
+            checks = cursor.fetchall()
+            checks_names = [col[0] for col in cursor.description]
+
+        checks_results = [dict(zip(checks_names, check)) for check in checks]
+
+        result = {
+            'employee': employee_result,
+            'checks': checks_results
+        }
+
+        return Response(result, status=status.HTTP_200_OK)
+
+
+
+
+class CreateCheckAPIView(APIView):
+    pass
+
 class DeleteCategoryAPIView(APIView):
     """
     API view to delete Category for MANAGER
