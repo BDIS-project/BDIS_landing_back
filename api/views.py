@@ -1,7 +1,6 @@
 from django.db import connection, IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -123,13 +122,12 @@ class StoreProductsAPIView(APIView):
                 sorter = "products_number"
            
         base_query = (
-            "SELECT Store_Product.*, product_name, category_name "
+            "SELECT Store_Product.*, product_name, category_name, picture "
             "FROM Store_Product "
             "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
             "INNER JOIN Category ON Product.category_number = Category.category_number "
             "WHERE 1=1 "
         )
-
 
         if upc:
             query_conditions.append("AND UPC = %s")
@@ -148,7 +146,7 @@ class StoreProductsAPIView(APIView):
             params.append(max_price)
         if categories:
             category_list = categories.split(',')
-            query_conditions.append(f"AND category_number IN ({','.join(['%s'] * len(category_list))})")
+            query_conditions.append(f"AND Category.category_number IN ({','.join(['%s'] * len(category_list))})")
             params.extend(category_list)
         if in_stock:
             query_conditions.append("AND products_number > 0")
@@ -282,7 +280,7 @@ class CategoriesAPIView(APIView):
     API view to retrieve, update all categories using raw SQL 
     for MANAGER and CreateProductAPIView DROPDOWN LIST
     """
-    permission_classes = [IsManager]
+    permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
 
@@ -942,23 +940,33 @@ class CategoryAveragePrice(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        average price of available products in each category.
+        Retrieve the average selling price for each category, 
+        optionally excluding promotional products.
         """
+
+        include_promotional = request.GET.get('include_promotional', 'true').lower() in ('true', '1')
 
         query = """
         SELECT 
-        Category.category_number, 
-        Category.category_name, 
-        COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
+            Category.category_number, 
+            Category.category_name, 
+            COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
         FROM 
-        Category 
-        LEFT JOIN Product ON Category.category_number = Product.category_number
-        LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+            Category 
+            LEFT JOIN Product ON Category.category_number = Product.category_number
+            LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+        WHERE 1=1
+        """
+
+        if not include_promotional:
+            query += " AND Store_Product.promotional_product = FALSE"
+
+        query += """
         GROUP BY 
-        Category.category_number, Category.category_name
+            Category.category_number, Category.category_name
         ORDER BY 
-        Category.category_number;"""
+            Category.category_number;
+        """
 
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -976,8 +984,7 @@ class AllProductsAreSold(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        average price of available products in each category.
+        Retrieve categories where all products are being sold.
         """
 
         query = """
