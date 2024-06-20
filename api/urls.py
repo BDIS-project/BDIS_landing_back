@@ -11,7 +11,9 @@ urlpatterns = [
     # urls for updating
     path('categories/<int:category_number>/updateCategory/', CategoriesAPIView.as_view(), name='update_category'), 
     path('products/<int:id_product>/updateProduct/', ProductsAPIView.as_view(), name='update_product'), 
+
     path('store-products/<str:UPC>/updateStoreProduct/', StoreProductsAPIView.as_view(), name='update_store_product'),
+
     
     # urls for authentification
     path('login/', LoginView.as_view(), name='login'),
@@ -20,6 +22,7 @@ urlpatterns = [
     # urls for DQL-queries
     path('products/', ProductsAPIView.as_view(), name = 'products'), # CASHIER
     path('store-products/', StoreProductsAPIView.as_view(), name='store-products'), # CASHIER
+
     path('check-overview/', CheckOverviewAPIView.as_view(), name='check-overview'), # CASHIER
     path('categories/', CategoriesAPIView.as_view(), name='get_categories'), # CASHIER, DROPDOWN LIST
     path('product-names/', ProductNamesAPIView.as_view(), name='product-names'), # DROPDOWN LIST
@@ -33,6 +36,7 @@ urlpatterns = [
     path('create-store-product/', CreateStoreProductAPIView.as_view(), name='create-store-product'),
     path('create-employee/', CreateEmployeeAPIView.as_view(), name='create-employee'),
     path('create-customer/', CreateCustomerAPIView.as_view(), name='create-customer'), # and CASHIER
+
 
     # urls for entities deletion for MANAGER
     path('delete-category/<int:category_number>/', DeleteCategoryAPIView.as_view(), name='delete-category'),
