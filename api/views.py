@@ -148,7 +148,7 @@ class StoreProductsAPIView(APIView):
             params.append(max_price)
         if categories:
             category_list = categories.split(',')
-            query_conditions.append(f"AND category_name IN ({','.join(['%s'] * len(category_list))})")
+            query_conditions.append(f"AND category_number IN ({','.join(['%s'] * len(category_list))})")
             params.extend(category_list)
         if in_stock:
             query_conditions.append("AND products_number > 0")
