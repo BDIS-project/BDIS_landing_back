@@ -42,7 +42,6 @@ urlpatterns = [
     path('delete-check', DeleteCheckAPIView.as_view(), name = 'delete-check'),
 
     # urls for the report
-    path('statistics/', StatisticsAPIView.as_view(), name='statistics'),
     path('categories-summary/', CategoriesSummaryAPIView.as_view(), name='categories-revenue'), # Evelina
     path('sold-every-product/', SoldEveryProductAPIView.as_view(), name='sold-every-product'), # Evelina
     path('category-average-price/', CategoryAveragePrice.as_view(), name='category-average-price'), # Andrii
