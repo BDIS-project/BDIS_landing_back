@@ -32,6 +32,8 @@ urlpatterns = [
     path('categories/<int:category_number>/updateCategory/', CategoriesAPIView.as_view(), name='update_category'), 
     path('products/<int:id_product>/updateProduct/', ProductsAPIView.as_view(), name='update_product'), 
     path('store-products/<str:UPC>/updateStoreProduct/', StoreProductsAPIView.as_view(), name='update_store_product'),
+    path('employee/<str:id_employee>/updateEmployee/', UpdateEmployeeAPIView.as_view(), name='update_employee'),
+    path('employee', UpdateEmployeeAPIView.as_view(), name='get_employee'),
 
     # urls for entities deletion for MANAGER
     path('delete-category/<int:category_number>/', DeleteCategoryAPIView.as_view(), name='delete-category'),
