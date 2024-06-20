@@ -66,7 +66,6 @@ INSERT INTO Check_table (check_number, id_employee, card_number, print_date, sum
 INSERT INTO Sale (UPC, check_number, product_number) VALUES
 ('123456789012', '100001', 1),
 ('123456789012', '100003', 2),
--- ('234567890123', '100001', 1),
 ('345678901234', '100002', 5),
 ('345678901234', '100004', 5),
 ('456789012345', '100002', 3),

@@ -25,6 +25,7 @@ urlpatterns = [
     path('create-store-product/', CreateStoreProductAPIView.as_view(), name = 'create-store-product'),
     path('create-employee/', CreateEmployeeAPIView.as_view(), name = 'create-employee'),
     path('create-customer/', CreateCustomerAPIView.as_view(), name = 'create-customer'), # and CASHIER
+    path('customer-percent/', CustumerPercentAPIView.as_view(), name = 'customer-percent'), # DROPDOWN LIST
     path('create-check/', CreateCheckAPIView.as_view(), name = 'create-check'),
 
     # urls for updating
@@ -41,7 +42,6 @@ urlpatterns = [
     path('delete-check', DeleteCheckAPIView.as_view(), name = 'delete-check'),
 
     # urls for the report
-    path('statistics/', StatisticsAPIView.as_view(), name='statistics'),
     path('categories-summary/', CategoriesSummaryAPIView.as_view(), name='categories-revenue'), # Evelina
     path('sold-every-product/', SoldEveryProductAPIView.as_view(), name='sold-every-product'), # Evelina
     path('category-average-price/', CategoryAveragePrice.as_view(), name='category-average-price'), # Andrii
