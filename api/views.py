@@ -1,4 +1,4 @@
-from django.db import connection, IntegrityError
+from django.db import connection, IntegrityError, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +11,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
 import logging
+
+import random
+import string
 
 from api.permissions import (
     IsAuthenticated,
@@ -148,7 +151,7 @@ class StoreProductsAPIView(APIView):
             params.append(max_price)
         if categories:
             category_list = categories.split(',')
-            query_conditions.append(f"AND category_number IN ({','.join(['%s'] * len(category_list))})")
+            query_conditions.append(f"AND Category.category_number IN ({','.join(['%s'] * len(category_list))})")
             params.extend(category_list)
         if in_stock:
             query_conditions.append("AND products_number > 0")
@@ -282,7 +285,7 @@ class CategoriesAPIView(APIView):
     API view to retrieve, update all categories using raw SQL 
     for MANAGER and CreateProductAPIView DROPDOWN LIST
     """
-    permission_classes = [IsManager]
+    permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
 
@@ -740,8 +743,113 @@ class CreateCustomerAPIView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class CustumerPercentAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to retrive info about customers
+        and their percents
+        """
+
+        query = """
+        SELECT card_number, cust_surname, percent
+        FROM Customer_Card
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+
+
 class CreateCheckAPIView(APIView):
-    pass
+    """
+    API view to create a Check with sales for a client
+    """
+    permission_classes = [IsManager]
+
+    def post(self, request, *args, **kwargs):
+        client_id = request.data.get('client')
+        sold_products = request.data.get('sold_products')
+
+        # Check if all necessary parameters are present
+        if not client_id or not sold_products:
+            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the amount is not more than products_number
+        for product in sold_products:
+            upc = product.get('upc')
+            amount = product.get('amount')
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT products_number FROM Store_Product WHERE UPC = %s", [upc])
+                result = cursor.fetchone()
+                if not result or result[0] < amount:
+                    return Response({'error': f'Not enough products in stock for UPC {upc}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate unique check number
+        def generate_unique_check_number():
+            while True:
+                check_number = ''.join(random.choices(string.digits, k=10))
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT COUNT(*) FROM Check_Table WHERE check_number = %s", [check_number])
+                    if cursor.fetchone()[0] == 0:
+                        return check_number
+
+        check_number = generate_unique_check_number()
+
+        # Start transaction
+        try:
+            with transaction.atomic():
+                sum_total = 0
+                for product in sold_products:
+                    upc = product.get('upc')
+                    amount = product.get('amount')
+
+                    # Insert into Sale table
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT selling_price FROM Store_Product WHERE UPC = %s",
+                            [upc]
+                        )
+                        selling_price = cursor.fetchone()[0]
+                        cursor.execute(
+                            "INSERT INTO Sale (UPC, check_number, product_number, selling_price) VALUES (%s, %s, %s, %s)",
+                            [upc, check_number, amount, selling_price]
+                        )
+                        sum_total += selling_price * amount
+
+                # Calculate total sum and VAT
+                vat = sum_total * 0.2
+                # Assume client has a discount percentage, e.g., fetched from the database
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT discount_percent FROM Customer_Card WHERE card_number = %s",
+                        [client_id]
+                    )
+                    discount_percent = cursor.fetchone()[0] / 100.0 if cursor.fetchone() else 0
+                sum_total = sum_total - (sum_total * discount_percent)
+
+                # Insert into Check_Table
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total, vat)
+                        VALUES (%s, %s, %s, NOW(), %s, %s)
+                        """,
+                        [check_number, 1001, client_id, sum_total, vat]
+                    )
+
+            return Response({'message': 'Check created successfully', 'check_number': check_number}, status=status.HTTP_201_CREATED)
+        
+        except IntegrityError as e:
+            return Response({'error': 'Could not create check due to integrity error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DeleteCategoryAPIView(APIView):
@@ -1060,8 +1168,6 @@ class CategoryProductInfo(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
 
-
-
         
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthorized access
@@ -1104,6 +1210,7 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
@@ -1121,11 +1228,13 @@ class LogoutView(APIView):
         except Exception as e:
             return Response({"detail": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=e)
 
+
 class CashierView(APIView):
     permission_classes = [IsCashier]
 
     def get(self, request):
         return Response({'message': 'Hello, Cashier!'})
+
 
 class ManagerView(APIView):
     permission_classes = [IsManager]
@@ -1133,6 +1242,7 @@ class ManagerView(APIView):
     def get(self, request):
         return Response({'message': 'Hello, Manager!'})
     
+
 class TestTokenView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1140,4 +1250,3 @@ class TestTokenView(APIView):
         logger = logging.getLogger(__name__)
         logger.info("TestTokenView accessed with token: %s", request.auth)
         return Response({'message': 'Token is valid'}, status=status.HTTP_200_OK)
-      

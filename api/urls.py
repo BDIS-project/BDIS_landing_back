@@ -25,6 +25,7 @@ urlpatterns = [
     path('create-store-product/', CreateStoreProductAPIView.as_view(), name = 'create-store-product'),
     path('create-employee/', CreateEmployeeAPIView.as_view(), name = 'create-employee'),
     path('create-customer/', CreateCustomerAPIView.as_view(), name = 'create-customer'), # and CASHIER
+    path('customer-percent/', CustumerPercentAPIView.as_view(), name = 'customer-percent'), # DROPDOWN LIST
     path('create-check/', CreateCheckAPIView.as_view(), name = 'create-check'),
 
     # urls for updating
