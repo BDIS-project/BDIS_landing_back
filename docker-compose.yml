@@ -9,6 +9,9 @@ services:
       - postgres
     env_file:
       - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=UTF-8
   
   postgres:
     image: postgres:latest

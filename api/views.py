@@ -1,16 +1,27 @@
-from django.db import connection, transaction, IntegrityError
+from django.db import connection, IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from api.processing import process_store_products
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from types import SimpleNamespace
+
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
+import logging
 
-from .permissions import IsCashier, IsManager
+from api.permissions import (
+    IsAuthenticated,
+    AllowAny,
+    IsCashier, 
+    IsManager, 
+    IsCashierOrManager 
+)
+from api.auth import JWTAuthentication
+from api.processing import process_store_products
+logger = logging.getLogger(__name__)
 
 # adding edit functionality to the data base
 # tables: Category, Product, Store_Product, Employee, Customer_Card, Check_Table, Sale
@@ -20,7 +31,7 @@ class ProductsAPIView(APIView):
     """
     API view to retrive, update products using raw sql FOR CASHIER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
         query = ("SELECT Product.*, category_name "
                 "FROM Product INNER JOIN Category ON Product.category_number = Category.category_number "
@@ -82,7 +93,7 @@ class StoreProductsAPIView(APIView):
     """
     API view to retrieve store products using raw SQL for CASHIER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
         upc = request.GET.get('UPC')
         product_name = request.GET.get('product_name')
@@ -216,7 +227,7 @@ class CheckOverviewAPIView(APIView):
     API view to retrieve store products using raw SQL for CASHIER
     """
     
-    permission_classes = [IsCashier, IsManager]
+    permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
         last_day = request.GET.get('last_day')
@@ -271,7 +282,7 @@ class CategoriesAPIView(APIView):
     API view to retrieve, update all categories using raw SQL 
     for MANAGER and CreateProductAPIView DROPDOWN LIST
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
 
@@ -306,7 +317,7 @@ class ProductNamesAPIView(APIView):
     """
     API view to retrive Products names and pk DROPDOWN LIST for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         query = "SELECT id_product, product_name FROM Product ORDER BY product_name;"
@@ -325,7 +336,7 @@ class StoreOverviewAPIView(APIView):
     """
     API view to look over store using raw SQL for MANAGER.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         employee = request.GET.get('employee')
@@ -440,7 +451,7 @@ class AboutMeAPIView(APIView):
     API view to rethrive all info about CASHIER
     currently loggen in
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
         id_employee = request.GET.get('id')
         employee_query = """SELECT * FROM EMPLOYEE
@@ -478,7 +489,7 @@ class ReportsAPIView(APIView):
 
 
 class CustomerCardOverviewAPIView(APIView):
-    permission_classes = []
+    permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
         all_clints = request.GET.get('all_clints')
@@ -504,7 +515,7 @@ class CustomerCardOverviewAPIView(APIView):
     
 
 class ManagerStoreOverviewAPIView(APIView):
-    permission_classes = []
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         view_check = request.GET.get('view_check')
@@ -556,7 +567,7 @@ class CreateCategoryAPIView(APIView):
     """
     API view to create Categories for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def post(self, request, *args, **kwargs):
         category_name = request.data.get('category-name')
 
@@ -582,7 +593,7 @@ class CreateProductAPIView(APIView):
     """
     API view to create Products for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def post(self, request, *args, **kwargs):
         category_number = request.data.get('category-number')
         product_name = request.data.get('name')
@@ -614,7 +625,7 @@ class CreateStoreProductAPIView(APIView):
     """
     API view to create Store Products for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def post(self, request, *args, **kwargs):
         UPC = request.data.get('UPC')
@@ -651,7 +662,7 @@ class CreateEmployeeAPIView(APIView):
     """
     API view to create Employee for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def post(self, request, *args, **kwargs):
         id_employee = request.data.get('id')
         empl_surname = request.data.get('surname')
@@ -695,7 +706,7 @@ class CreateCustomerAPIView(APIView):
     """
     API view to create Customer Card for MANAGER and CASHIER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsCashierOrManager]
     def post(self, request, *args, **kwargs):
         card_number = request.data.get('card-number')
         cust_surname = request.data.get('surname')
@@ -737,7 +748,7 @@ class DeleteCategoryAPIView(APIView):
     """
     API view to delete Category for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def delete(self, request, category_number, *args, **kwargs):
         query = "DELETE FROM Category WHERE category_number = %s;"
@@ -758,7 +769,7 @@ class DeleteProductAPIView(APIView):
     """
     API view to delete Product for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def delete(self, request, id_product, *args, **kwargs):
         query = "DELETE FROM Product WHERE id_product = %s;"
         vals = [id_product]
@@ -778,7 +789,7 @@ class DeleteStoreProductAPIView(APIView):
     """
     API view to delete Store Product for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def delete(self, request, UPC, *args, **kwargs):
         query = "DELETE FROM Store_Product WHERE UPC = %s;"
         vals = [UPC]
@@ -798,7 +809,7 @@ class DeleteEmployeeAPIView(APIView):
     """
     API view to delete Employee for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def delete(self, request, id_employee, *args, **kwargs):
         query = "DELETE FROM Employee WHERE id_employee = %s;"
         vals = [id_employee]
@@ -819,7 +830,7 @@ class DeleteCustomerAPIView(APIView):
     API view to delete Customer Card for MANAGER
     """
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     def delete(self, request, card_number, *args, **kwargs):
         query = "DELETE FROM Customer_Card WHERE card_number = %s;"
         vals = [card_number]
@@ -839,7 +850,7 @@ class DeleteCheckAPIView(APIView):
     """
     API view to delete Check for MANAGER
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
     pass
     
 
@@ -851,7 +862,7 @@ class StatisticsAPIView(APIView):
 # Evelina
 class CategoriesSummaryAPIView(APIView):
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         """
@@ -893,7 +904,7 @@ class CategoriesSummaryAPIView(APIView):
 
 # Evelina
 class SoldEveryProductAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         """
@@ -927,7 +938,7 @@ class SoldEveryProductAPIView(APIView):
 
 # Andrii
 class CategoryAveragePrice(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         """
@@ -961,7 +972,7 @@ class CategoryAveragePrice(APIView):
 
 # Andrii
 class AllProductsAreSold(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         """
@@ -993,7 +1004,7 @@ class AllProductsAreSold(APIView):
 
 # Damian
 class AllCategories(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         """
@@ -1025,7 +1036,7 @@ class AllCategories(APIView):
 
 # Damian
 class CategoryProductInfo(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
         """
@@ -1050,25 +1061,38 @@ class CategoryProductInfo(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
+
+        
 class LoginView(APIView):
+    permission_classes = [AllowAny]  # Allow unauthorized access
+
     @method_decorator(csrf_exempt)
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        
+
         # Hash the password before checking it against the database
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id, username, role FROM Users WHERE username = %s AND password = %s",
-                [username, hashed_password]
+                "SELECT user_id, username, Employee.empl_role "
+                "FROM User_Table "
+                "INNER JOIN Employee ON Employee.id_employee = User_Table.id_employee "
+                "WHERE username = %s AND user_password = %s",
+                [username, hashed_password.lower()]
             )
             user = cursor.fetchone()
         
         if user:
             user_id, username, role = user
-            refresh = RefreshToken.for_user(user)
+            simple_user = SimpleNamespace(
+                id=user_id,
+                username=username,
+                role=role,
+                is_authenticated=True
+            )
+            refresh = RefreshToken.for_user(simple_user)
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -1080,22 +1104,40 @@ class LoginView(APIView):
             }, status=status.HTTP_200_OK)
         return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
-        request.auth.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            refresh_token = request.data.get('refresh_token')
 
+            if not refresh_token:
+                return Response({"detail": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Blacklist the refresh token
+            JWTAuthentication().blacklist_token(refresh_token)
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            return Response({"detail": "An error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR, exception=e)
 
 class CashierView(APIView):
-    permission_classes = [IsAuthenticated, IsCashier]
+    permission_classes = [IsCashier]
 
     def get(self, request):
         return Response({'message': 'Hello, Cashier!'})
 
-
 class ManagerView(APIView):
-    permission_classes = [IsAuthenticated, IsManager]
+    permission_classes = [IsManager]
 
     def get(self, request):
         return Response({'message': 'Hello, Manager!'})
+    
+class TestTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        logger = logging.getLogger(__name__)
+        logger.info("TestTokenView accessed with token: %s", request.auth)
+        return Response({'message': 'Token is valid'}, status=status.HTTP_200_OK)
+      

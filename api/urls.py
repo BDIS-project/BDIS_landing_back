@@ -1,7 +1,6 @@
 from django.urls import path
-from . import views # for views.get_schedule?
-from .views import * # for ScheduleAPIView?
-from rest_framework_simplejwt import views as jwt_views
+from api.views import * 
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
 
 from django.contrib import admin
 from django.urls import path, include
@@ -53,4 +52,10 @@ urlpatterns = [
     # urls for authentification
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
+
+    # urls for token usage 
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('test-token/', TestTokenView.as_view(), name='test_token'),
 ]

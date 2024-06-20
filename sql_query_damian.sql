@@ -1,4 +1,27 @@
--- Get info about all categories, sorted by name;
+
+-- Test query 1
+SELECT category_name, SUM(product_number) AS total_units_sold, SUM(Sale.selling_price) AS total_revenue
+FROM ((Sale INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC) INNER JOIN Product ON Store_Product.id_product = Product.id_product) INNER JOIN Category ON Product.category_number = Category.category_number
+GROUP BY Category.category_name;
+
+-- MANAGER --
+-- 5. Get info about all Employee, sorted by surname;
+SELECT *
+FROM Employee
+ORDER BY empl_surname;
+
+-- 6. Get info about all Employee with the role 'Sale', sorted by surname;
+SELECT * 
+FROM Employee
+WHERE (empl_role = 'sales')
+ORDER BY empl_surname;
+
+-- 7. Get info about all regular customers, sorted by surname;
+SELECT * 
+FROM Customer_Card
+ORDER BY cust_surname;
+
+-- 8. Get info about all categoris, sorted by name;
 SELECT * 
 FROM Category
 WHERE NOT EXISTS (  SELECT *
