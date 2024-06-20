@@ -105,6 +105,7 @@ def generate_unique_upc():
             if not cursor.fetchone():
                 return new_upc
 
+
 def process_store_products():
     """Process all rows in the Store_Product table 
     and create promotional products if conditions are met."""
@@ -158,6 +159,7 @@ def process_store_products():
                         WHERE UPC = %s;
                     """, [UPC])
 
+
 class CreateCategoryAPIView(APIView):
     """
     API view to create Categories for MANAGER
@@ -182,6 +184,7 @@ class CreateCategoryAPIView(APIView):
             return Response({'error': 'Category could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CreateProductAPIView(APIView):
     """
@@ -214,6 +217,7 @@ class CreateProductAPIView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class ProductNamesAPIView(APIView):
     """
     API view to retrive Products names and pk DROPDOWN LIST for MANAGER
@@ -232,6 +236,7 @@ class ProductNamesAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
     
+
 class CreateStoreProductAPIView(APIView):
     """
     API view to create Store Products for MANAGER
@@ -311,7 +316,7 @@ class CreateEmployeeAPIView(APIView):
             return Response({'error': 'Employee could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
 
 class CreateCustomerAPIView(APIView):
     """
@@ -349,6 +354,7 @@ class CreateCustomerAPIView(APIView):
             return Response({'error': 'Customer Card could not be created'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AboutMeAPIView(APIView):
     """
@@ -391,8 +397,206 @@ class AboutMeAPIView(APIView):
 class ReportsAPIView(APIView):
     pass
 
-class CreateCheckAPIView(APIView):
+# APIS for report
+class StatisticsAPIView(APIView):
     pass
+
+# Evelina
+class CategoriesSummaryAPIView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to retrive info about each category
+        total revenue or number of products sold using raw SQL.
+        """
+
+        metric = request.GET.get('metric')
+        
+        if metric == 'quantity':
+            aggregation_field  = 'product_number'
+            result_label = 'total_units_sold'
+        elif metric == 'revenue':
+            aggregation_field  = 'Sale.selling_price'
+            result_label = 'total_revenue'
+        else:
+            return Response({"error": "Invalid metric parameter. Use 'quantity' or 'revenue'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        params = [aggregation_field, result_label]
+
+        query = """
+        SELECT Category.category_name, SUM({0}) AS {1}
+        FROM Sale
+        INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+        INNER JOIN Product ON Store_Product.id_product = Product.id_product
+        INNER JOIN Category ON Product.category_number = Category.category_number
+        GROUP BY Category.category_name;
+        """.format(aggregation_field, result_label)
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+ 
+# Evelina
+class SoldEveryProductAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to retrive info about employees that 
+        sold each product at leans once
+        """
+
+        query = """
+        SELECT DISTINCT id_employee, empl_surname
+        FROM Employee
+        WHERE NOT EXISTS (
+        SELECT UPC
+        FROM Store_Product
+        WHERE NOT EXISTS (
+        SELECT Sale.check_number
+        FROM Sale
+        INNER JOIN Check_Table ON Check_Table.check_number = Sale.check_number
+        WHERE Employee.id_employee = Check_Table.id_employee AND Store_Product.UPC = Sale.UPC
+        )
+        );"""
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+
+# Andrii
+class CategoryAveragePrice(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to retrive info about
+        average price of available products in each category.
+        """
+
+        query = """
+        SELECT 
+        Category.category_number, 
+        Category.category_name, 
+        COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
+        FROM 
+        Category 
+        LEFT JOIN Product ON Category.category_number = Product.category_number
+        LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+        GROUP BY 
+        Category.category_number, Category.category_name
+        ORDER BY 
+        Category.category_number;"""
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+
+# Andrii
+class AllProductsAreSold(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to retrive info about
+        average price of available products in each category.
+        """
+
+        query = """
+        SELECT Category.category_number,
+        Category.category_name
+        FROM Category 
+        WHERE NOT EXISTS (SELECT Product.id_product
+        FROM Product
+        WHERE Product.category_number = Category.category_number 
+        AND id_product NOT IN (SELECT Store_Product.id_product
+        FROM Store_Product
+        )
+        );"""
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+
+# Damian
+class AllCategories(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to retrive info about
+        all categories, sorted by name
+        """
+
+        query = """
+        SELECT * 
+        FROM Category
+        WHERE NOT EXISTS (SELECT *
+        FROM Product
+        WHERE id_product NOT IN (SELECT id_product
+        FROM Store_Product
+        ) 
+        AND Category.category_number = Product.category_number
+        )
+        ORDER BY category_number, category_name;"""
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+
+# Damian
+class CategoryProductInfo(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        """
+        API view to get 
+        complete info about categories and all the products
+        """
+
+        query = """
+        SELECT c.category_number, c.category_name, COALESCE(SUM(products_number),0) AS count
+        FROM (Category AS c LEFT JOIN Product ON c.category_number = Product.category_number)
+        LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+        GROUP BY c.category_number, c.category_name
+        ORDER BY c.category_number, c.category_name;"""
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = [dict(zip(columns, row)) for row in rows]
+
+        return Response(result, status=status.HTTP_200_OK)
+
 
 class DeleteCategoryAPIView(APIView):
     """
@@ -413,7 +617,7 @@ class DeleteCategoryAPIView(APIView):
             return Response({'error': 'Category could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
+
 
 class DeleteProductAPIView(APIView):
     """
@@ -434,6 +638,7 @@ class DeleteProductAPIView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class DeleteStoreProductAPIView(APIView):
     """
     API view to delete Store Product for MANAGER
@@ -452,6 +657,7 @@ class DeleteStoreProductAPIView(APIView):
             return Response({'error': 'Store Product could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class DeleteEmployeeAPIView(APIView):
     """
@@ -472,6 +678,7 @@ class DeleteEmployeeAPIView(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class DeleteCustomerAPIView(APIView):
     """
     API view to delete Customer Card for MANAGER
@@ -491,6 +698,7 @@ class DeleteCustomerAPIView(APIView):
             return Response({'error': 'Customer Card could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class DeleteCheckAPIView(APIView):
     """
@@ -807,7 +1015,7 @@ class StoreOverviewAPIView(APIView):
         promotional = request.GET.get('promotional')
         non_promotional = request.GET.get('non-promotional')
         upc = request.GET.get('upc')
-
+        
         sorter = "product_name"
         if sort_by:
             if sort_by == 'products-desc':
