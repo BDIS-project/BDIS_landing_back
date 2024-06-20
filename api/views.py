@@ -1,7 +1,6 @@
 from django.db import connection, IntegrityError, transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -768,14 +767,24 @@ class CustumerPercentAPIView(APIView):
 
 
 class CreateCheckAPIView(APIView):
-    """
-    API view to create a Check with sales for a client
-    """
     permission_classes = [IsManager]
-
     def post(self, request, *args, **kwargs):
         client_id = request.data.get('client')
         sold_products = request.data.get('sold_products')
+
+        # Check if all necessary parameters are present
+        if not client_id or not sold_products:
+            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the amount is not more than products_number
+        for product in sold_products:
+            upc = product.get('upc')
+            amount = product.get('amount')
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT products_number FROM Store_Product WHERE UPC = %s", [upc])
+                result = cursor.fetchone()
+                if not result or result[0] < amount:
+                    return Response({'error': f'Not enough products in stock for UPC {upc}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if all necessary parameters are present
         if not client_id or not sold_products:
@@ -802,50 +811,52 @@ class CreateCheckAPIView(APIView):
 
         check_number = generate_unique_check_number()
 
-        # Start transaction
+        sum_total = 0
         try:
-            with transaction.atomic():
-                sum_total = 0
-                for product in sold_products:
-                    upc = product.get('upc')
-                    amount = product.get('amount')
+            # Insert sales and calculate sum_total
+            for product in sold_products:
+                upc = product.get('upc')
+                amount = product.get('amount')
 
-                    # Insert into Sale table
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            "SELECT selling_price FROM Store_Product WHERE UPC = %s",
-                            [upc]
-                        )
-                        selling_price = cursor.fetchone()[0]
-                        cursor.execute(
-                            "INSERT INTO Sale (UPC, check_number, product_number, selling_price) VALUES (%s, %s, %s, %s)",
-                            [upc, check_number, amount, selling_price]
-                        )
-                        sum_total += selling_price * amount
+                # Get selling price
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT selling_price FROM Store_Product WHERE UPC = %s", [upc])
+                    selling_price = cursor.fetchone()[0]
 
-                # Calculate total sum and VAT
-                vat = sum_total * 0.2
-                # Assume client has a discount percentage, e.g., fetched from the database
+                # Insert into Sale table
                 with connection.cursor() as cursor:
                     cursor.execute(
-                        "SELECT discount_percent FROM Customer_Card WHERE card_number = %s",
-                        [client_id]
+                        "INSERT INTO Sale (UPC, check_number, product_number, selling_price) VALUES (%s, %s, %s, %s)",
+                        [upc, check_number, amount, selling_price]
                     )
-                    discount_percent = cursor.fetchone()[0] / 100.0 if cursor.fetchone() else 0
-                sum_total = sum_total - (sum_total * discount_percent)
+                sum_total += selling_price * amount
 
-                # Insert into Check_Table
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        """
-                        INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total, vat)
-                        VALUES (%s, %s, %s, NOW(), %s, %s)
-                        """,
-                        [check_number, 1001, client_id, sum_total, vat]
-                    )
+            # Calculate total sum and VAT
+            vat = sum_total * 0.2
+
+            # Get discount percentage
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT discount_percent FROM Customer_Card WHERE card_number = %s",
+                    [client_id]
+                )
+                result = cursor.fetchone()
+                discount_percent = result[0] / 100.0 if result else 0
+
+            sum_total = sum_total - (sum_total * discount_percent)
+
+            # Insert into Check_Table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total, vat)
+                    VALUES (%s, %s, %s, NOW(), %s, %s)
+                    """,
+                    [check_number, 1005, client_id, sum_total, vat]
+                )
 
             return Response({'message': 'Check created successfully', 'check_number': check_number}, status=status.HTTP_201_CREATED)
-        
+
         except IntegrityError as e:
             return Response({'error': 'Could not create check due to integrity error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
