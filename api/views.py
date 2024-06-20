@@ -125,13 +125,12 @@ class StoreProductsAPIView(APIView):
                 sorter = "products_number"
            
         base_query = (
-            "SELECT Store_Product.*, product_name, category_name "
+            "SELECT Store_Product.*, product_name, category_name, picture "
             "FROM Store_Product "
             "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
             "INNER JOIN Category ON Product.category_number = Category.category_number "
             "WHERE 1=1 "
         )
-
 
         if upc:
             query_conditions.append("AND UPC = %s")
@@ -1061,23 +1060,33 @@ class CategoryAveragePrice(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        average price of available products in each category.
+        Retrieve the average selling price for each category, 
+        optionally excluding promotional products.
         """
+
+        include_promotional = request.GET.get('include_promotional', 'true').lower() in ('true', '1')
 
         query = """
         SELECT 
-        Category.category_number, 
-        Category.category_name, 
-        COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
+            Category.category_number, 
+            Category.category_name, 
+            COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
         FROM 
-        Category 
-        LEFT JOIN Product ON Category.category_number = Product.category_number
-        LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+            Category 
+            LEFT JOIN Product ON Category.category_number = Product.category_number
+            LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+        WHERE 1=1
+        """
+
+        if not include_promotional:
+            query += " AND Store_Product.promotional_product = FALSE"
+
+        query += """
         GROUP BY 
-        Category.category_number, Category.category_name
+            Category.category_number, Category.category_name
         ORDER BY 
-        Category.category_number;"""
+            Category.category_number;
+        """
 
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -1095,8 +1104,7 @@ class AllProductsAreSold(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        average price of available products in each category.
+        Retrieve categories where all products are being sold.
         """
 
         query = """
