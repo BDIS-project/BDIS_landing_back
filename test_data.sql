@@ -9,8 +9,8 @@ INSERT INTO Category (category_name) VALUES
 -- Fill Product table
 INSERT INTO Product (category_number, product_name, characteristics, picture) VALUES 
 (1, 'Cucumber "Mirabella"', 'Green cucumber, variety "Mirabella"', 'mirabella'),
-(1, 'Tomato', 'Red tomato', 'tomato', NULL),
-(1, 'Cabbage', 'Green cabbage'),
+(1, 'Tomato', 'Red tomato', 'tomato'),
+(1, 'Cabbage', 'Green cabbage', NULL),
 (2, 'Banana', 'Yellow banana', 'banana'),
 (2, 'Apple "Golden"', 'Green apple, variety "Golden"', 'golden_apple'),
 (3, 'Ryazhenka "Slovyanochka"', 'Product from baked milk', 'slovyanochka_ryazhenka'),
