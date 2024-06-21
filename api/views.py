@@ -1135,8 +1135,8 @@ class AllCategories(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        all categories, sorted by name
+        API view to retrieve categories 
+        which currently have all products in store 
         """
 
         query = """
@@ -1173,11 +1173,21 @@ class CategoryProductInfo(APIView):
 
         lower_end_quantity = request.GET.get('lower_end_quantity')
 
+        lower_end_quantity = request.GET.get('lower_end_quantity')
+
         query = """
         SELECT c.category_number, c.category_name, COALESCE(SUM(products_number),0) AS count
         FROM (Category AS c LEFT JOIN Product ON c.category_number = Product.category_number)
         LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
         GROUP BY c.category_number, c.category_name
+        
+        """
+
+        if lower_end_quantity is not None:
+            query += ' HAVING COALESCE(SUM(store_product.products_number),0)>%s'
+        else:
+            query += ' ORDER BY c.category_number, c.category_name'
+        query += ';'
         
         """
 
@@ -1188,12 +1198,13 @@ class CategoryProductInfo(APIView):
 
         with connection.cursor() as cursor:
             cursor.execute(query, [lower_end_quantity])
+            cursor.execute(query, [lower_end_quantity])
             rows = cursor.fetchall()
             columns = [col[0] for col in cursor.description]
 
         result = [dict(zip(columns, row)) for row in rows]
 
-        return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)"""
     
 
         
