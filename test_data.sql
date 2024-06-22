@@ -10,6 +10,7 @@ INSERT INTO Category (category_name) VALUES
 INSERT INTO Product (category_number, product_name, characteristics, picture) VALUES 
 (1, 'Cucumber "Mirabella"', 'Green cucumber, variety "Mirabella"', 'mirabella'),
 (1, 'Tomato', 'Red tomato', 'tomato'),
+(1, 'Cabbage', 'Green cabbage', NULL),
 (2, 'Banana', 'Yellow banana', 'banana'),
 (2, 'Apple "Golden"', 'Green apple, variety "Golden"', 'golden_apple'),
 (3, 'Ryazhenka "Slovyanochka"', 'Product from baked milk', 'slovyanochka_ryazhenka'),
@@ -22,12 +23,15 @@ INSERT INTO Product (category_number, product_name, characteristics, picture) VA
 -- Fill Store_Product table
 INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product) VALUES 
 ('123456789012', NULL, 1, 14.45, 200, '2024-06-20', FALSE),
+('234567890123', NULL, 2, 18.50, 100, '2024-06-25', FALSE),
 ('345678901234', NULL, 4, 22.19, 60, '2024-06-13', FALSE),
 ('456789012345', NULL, 5, 18.93, 120, '2024-06-21', FALSE),
 ('567890123456', NULL, 6, 31.23, 15, '2024-06-13', FALSE),
+('678901234567', NULL, 7, 35.50, 15, '2024-06-13', FALSE),
 ('789012345678', NULL, 8, 56.16, 15, '2024-06-13', FALSE),
 ('890123456789', NULL, 9, 190.98, 15, '2024-06-13', FALSE),
-('901234567890', NULL, 10, 19.99, 5, '2024-06-13', FALSE);
+('901234567890', NULL, 10, 19.99, 5, '2024-06-13', FALSE),
+('012345678901', NULL, 11, 5.99, 30, '2024-06-13', FALSE);
 
 -- Fill Employee table
 INSERT INTO Employee (id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary, date_of_birth, date_of_start, phone_number, city, street, zip_code) VALUES 
@@ -65,12 +69,17 @@ INSERT INTO Check_table (check_number, id_employee, card_number, print_date, sum
 -- Fill Sales table
 INSERT INTO Sale (UPC, check_number, product_number) VALUES
 ('123456789012', '100001', 1),
-('123456789012', '100003', 2),
+('123456789012', '100002', 2),
+('123456789012', '100003', 1),
+('234567890123', '100001', 1),
+('345678901234', '100001', 5),
 ('345678901234', '100002', 5),
 ('345678901234', '100004', 5),
+('456789012345', '100001', 3),
 ('456789012345', '100002', 3),
 ('567890123456', '100002', 3),
-('123456789012', '100002', 1),
+('678901234567', '100001', 3),
 ('789012345678', '100002', 1),
 ('890123456789', '100002', 1),
-('901234567890', '100002', 2);
+('901234567890', '100002', 2),
+('012345678901', '100002', 2);

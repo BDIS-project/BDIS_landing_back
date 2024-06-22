@@ -1,7 +1,6 @@
-from django.db import connection, IntegrityError, transaction
+from django.db import connection, IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -14,8 +13,14 @@ import logging
 
 import random
 import string
+
 import json
 from django.http import HttpResponse
+
+from decimal import Decimal
+
+from .permissions import IsCashier, IsManager
+
 
 from api.permissions import (
     IsAuthenticated,
@@ -97,11 +102,13 @@ class ProductsAPIView(APIView):
 class StoreProductsAPIView(APIView):
     """
     API view to retrieve store products using raw SQL for CASHIER
+    Currently used as homepage
     """
     permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
-        upc = request.GET.get('UPC')
-        product_name = request.GET.get('product_name')
+        process_store_products()
+
+        search = request.GET.get('search')
         promotional = request.GET.get('promotional')
         min_price = request.GET.get('minPrice')
         max_price = request.GET.get('maxPrice')
@@ -128,20 +135,29 @@ class StoreProductsAPIView(APIView):
                 sorter = "products_number"
            
         base_query = (
-            "SELECT Store_Product.*, product_name, category_name "
+            "SELECT Store_Product.*, product_name, category_name, picture "
             "FROM Store_Product "
             "INNER JOIN Product ON Store_Product.id_product = Product.id_product "
             "INNER JOIN Category ON Product.category_number = Category.category_number "
             "WHERE 1=1 "
         )
 
+        if search:
+            # Check for product name match first
+            product_name_query = (
+                "SELECT COUNT(*) FROM Product WHERE product_name LIKE %s"
+            )
+            with connection.cursor() as cursor:
+                cursor.execute(product_name_query, ['%' + search + '%'])
+                product_name_count = cursor.fetchone()[0]
 
-        if upc:
-            query_conditions.append("AND UPC = %s")
-            params.append(upc)
-        if product_name:
-            query_conditions.append("AND product_name LIKE %s")
-            params.append(product_name)
+            if product_name_count > 0:
+                query_conditions.append("AND product_name LIKE %s")
+                params.append('%' + search + '%')
+            else:
+                query_conditions.append("AND UPC = %s")
+                params.append(search)
+
         if promotional:
             query_conditions.append("AND promotional_product = %s")
             params.append(promotional.lower() == 'true')
@@ -156,9 +172,11 @@ class StoreProductsAPIView(APIView):
             query_conditions.append(f"AND Category.category_number IN ({','.join(['%s'] * len(category_list))})")
             params.extend(category_list)
         if in_stock:
-            query_conditions.append("AND products_number > 0")
+            if in_stock.lower() == 'true':
+                query_conditions.append("AND products_number > 0")
 
-        query = base_query + ' '.join(query_conditions) + f" ORDER BY {sorter};"
+        
+        query = base_query + ' '.join(query_conditions) + f" ORDER BY (products_number = 0), {sorter};"
 
         with connection.cursor() as cursor:
             cursor.execute(query, params)
@@ -344,6 +362,7 @@ class StoreOverviewAPIView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
+        process_store_products()
         employee = request.GET.get('employee')
         role = request.GET.get('role')
         employee_surname = request.GET.get('employee-surname')
@@ -456,16 +475,25 @@ class AboutMeAPIView(APIView):
     API view to rethrive all info about CASHIER
     currently loggen in
     """
-    permission_classes = [IsCashierOrManager]
+    permission_classes = [IsCashier]
     def get(self, request, *args, **kwargs):
-        id_employee = request.GET.get('id')
+        user_id = request.user["id"]
+        with connection.cursor() as cursor:
+            cursor.execute(
+            "SELECT id_employee "
+            "FROM User_Table "
+            "WHERE user_id = %s",
+            [user_id])
+
+            cashier_id = cursor.fetchone()
+        
         employee_query = """SELECT * FROM EMPLOYEE
         WHERE id_employee = %s;
         """
         check_query = """ SELECT * FROM Check_Table
         WHERE id_employee = %s;
         """
-        params = [id_employee]
+        params = [cashier_id]
 
         with connection.cursor() as cursor:
             cursor.execute(employee_query, params)
@@ -513,6 +541,7 @@ class CustomerCardOverviewAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK) 
     
+
 
 class CompleteSingleCheckOverviewAPIView(APIView):
     permission_classes = [IsManager]
@@ -993,17 +1022,13 @@ class CustumerPercentAPIView(APIView):
 
 
 class CreateCheckAPIView(APIView):
-    """
-    API view to create a Check with sales for a client
-    """
-    permission_classes = [IsManager]
-
+    permission_classes = [IsCashier]
     def post(self, request, *args, **kwargs):
         client_id = request.data.get('client')
         sold_products = request.data.get('sold_products')
 
         # Check if all necessary parameters are present
-        if not client_id or not sold_products:
+        if not sold_products:
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the amount is not more than products_number
@@ -1026,51 +1051,93 @@ class CreateCheckAPIView(APIView):
                         return check_number
 
         check_number = generate_unique_check_number()
-
-        # Start transaction
+        
+        sum_total = Decimal('0.0')
         try:
-            with transaction.atomic():
-                sum_total = 0
-                for product in sold_products:
-                    upc = product.get('upc')
-                    amount = product.get('amount')
+            # Calculate sum_total
+            for product in sold_products:
+                upc = product.get('upc')
+                amount = product.get('amount')
 
-                    # Insert into Sale table
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            "SELECT selling_price FROM Store_Product WHERE UPC = %s",
-                            [upc]
-                        )
-                        selling_price = cursor.fetchone()[0]
-                        cursor.execute(
-                            "INSERT INTO Sale (UPC, check_number, product_number, selling_price) VALUES (%s, %s, %s, %s)",
-                            [upc, check_number, amount, selling_price]
-                        )
-                        sum_total += selling_price * amount
+                # Get selling price
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT selling_price FROM Store_Product WHERE UPC = %s", [upc])
+                    selling_price = cursor.fetchone()[0]
+                    cursor.execute("UPDATE Store_Product SET products_number = products_number - %s WHERE UPC = %s", [amount, upc])
 
-                # Calculate total sum and VAT
-                vat = sum_total * 0.2
-                # Assume client has a discount percentage, e.g., fetched from the database
+                sum_total += Decimal(str(selling_price)) * Decimal(str(amount))
+
+            # Calculate total sum and VAT
+            vat = sum_total * Decimal('0.2')
+            sum_total = sum_total + vat
+
+
+            # Get discount percentage if client ID is provided
+            discount_percent = Decimal('0.0')
+            if client_id:
                 with connection.cursor() as cursor:
                     cursor.execute(
-                        "SELECT discount_percent FROM Customer_Card WHERE card_number = %s",
+                        "SELECT percent FROM Customer_Card WHERE card_number = %s",
                         [client_id]
                     )
-                    discount_percent = cursor.fetchone()[0] / 100.0 if cursor.fetchone() else 0
-                sum_total = sum_total - (sum_total * discount_percent)
+                    result = cursor.fetchone()
+                    if result:
+                        discount_percent = Decimal(str(result[0])) / Decimal('100.0')
+            else:
+                client_id = None
 
-                # Insert into Check_Table
+            sum_total = sum_total - (sum_total * discount_percent)
+
+            user_id = request.user["id"]
+            with connection.cursor() as cursor:
+                cursor.execute(
+                "SELECT id_employee "
+                "FROM User_Table "
+                "WHERE user_id = %s",
+                [user_id])
+
+                cashier_id = cursor.fetchone()
+              
+
+            # Insert into Check_Table
+            with connection.cursor() as cursor:
+                if cashier_id:
+                    cursor.execute(
+                    """
+                    INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total)
+                    VALUES (%s, %s, %s, NOW(), %s)
+                    """,
+                    [check_number, cashier_id, client_id, sum_total]
+                    )
+                else:
+                    cursor.execute(
+                    """
+                    INSERT INTO Check_Table (check_number, id_employee, print_date, sum_total)
+                    VALUES (%s, %s, NOW(), %s)
+                    """,
+                    [check_number, cashier_id, sum_total]
+                    )
+
+
+            # Insert sales
+            for product in sold_products:
+                upc = product.get('upc')
+                amount = product.get('amount')
+
+                # Get selling price
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT selling_price FROM Store_Product WHERE UPC = %s", [upc])
+                    selling_price = cursor.fetchone()[0]
+
+                # Insert into Sale table
                 with connection.cursor() as cursor:
                     cursor.execute(
-                        """
-                        INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total, vat)
-                        VALUES (%s, %s, %s, NOW(), %s, %s)
-                        """,
-                        [check_number, 1001, client_id, sum_total, vat]
+                        "INSERT INTO Sale (UPC, check_number, product_number, selling_price) VALUES (%s, %s, %s, %s)",
+                        [upc, check_number, amount, selling_price]
                     )
 
             return Response({'message': 'Check created successfully', 'check_number': check_number}, status=status.HTTP_201_CREATED)
-        
+
         except IntegrityError as e:
             return Response({'error': 'Could not create check due to integrity error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
@@ -1184,9 +1251,21 @@ class DeleteCheckAPIView(APIView):
     API view to delete Check for MANAGER
     """
     permission_classes = [IsManager]
-    pass
-    
+     def delete(self, request, check_number, *args, **kwargs):
+        query = "DELETE FROM Check_Table WHERE check_number = %s;"
+        vals = [check_number]
 
+         # return result of query execution
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Check deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Check could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
 # APIS for report (task 4 for Manager)
 class CompleteStatisticsAPIView(APIView):
     permission_classes = [IsManager]
@@ -1237,7 +1316,7 @@ class CompleteStatisticsAPIView(APIView):
         return json.dumps(rows)
 
 
-
+  
 # Evelina
 class CategoriesSummaryAPIView(APIView):
 
@@ -1321,23 +1400,33 @@ class CategoryAveragePrice(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        average price of available products in each category.
+        Retrieve the average selling price for each category, 
+        optionally excluding promotional products.
         """
+
+        include_promotional = request.GET.get('include_promotional', 'true').lower() in ('true', '1')
 
         query = """
         SELECT 
-        Category.category_number, 
-        Category.category_name, 
-        COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
+            Category.category_number, 
+            Category.category_name, 
+            COALESCE(ROUND(AVG(Store_Product.selling_price), 2), 0) AS avg_selling_price
         FROM 
-        Category 
-        LEFT JOIN Product ON Category.category_number = Product.category_number
-        LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+            Category 
+            LEFT JOIN Product ON Category.category_number = Product.category_number
+            LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
+        WHERE 1=1
+        """
+
+        if not include_promotional:
+            query += " AND Store_Product.promotional_product = FALSE"
+
+        query += """
         GROUP BY 
-        Category.category_number, Category.category_name
+            Category.category_number, Category.category_name
         ORDER BY 
-        Category.category_number;"""
+            Category.category_number;
+        """
 
         with connection.cursor() as cursor:
             cursor.execute(query)
@@ -1355,8 +1444,7 @@ class AllProductsAreSold(APIView):
 
     def get(self, request, *args, **kwargs):
         """
-        API view to retrive info about
-        average price of available products in each category.
+        Retrieve categories where all products are being sold.
         """
 
         query = """
@@ -1446,22 +1534,6 @@ class CategoryProductInfo(APIView):
         result = [dict(zip(columns, row)) for row in rows]
 
         return Response(result, status=status.HTTP_200_OK)
-
-
-
-from django.db import connection, transaction
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework import status
-
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.db import connection, IntegrityError
-import hashlib
-
-from .permissions import IsCashier, IsManager
 
 class ManagerStoreOverviewAPIView(APIView):
     permission_classes = []

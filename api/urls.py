@@ -16,7 +16,7 @@ urlpatterns = [
     path('store-overview/', StoreOverviewAPIView.as_view(), name = 'store-overview'), # MANAGER
     path('about-me/', AboutMeAPIView.as_view(), name = 'about-me'), # CASHIER
     path('reports/', ReportsAPIView.as_view(), name = 'reports'), # MANAGER
-    path('customer-card-overview/', CustomerCardOverviewAPIView.as_view(), name = 'customer-card-overview'), # MANAGER
+    path('customer-card-overview/', CustomerCardOverviewAPIView.as_view(), name = 'customer-card-overview'), # MANAGER AND CASHIER
     path('manager-store-overview/', ManagerStoreOverviewAPIView.as_view(), name = 'manager-store-overview'), # MANAGER
 
     #testing this now
@@ -51,10 +51,9 @@ urlpatterns = [
     path('delete-store-product/<str:UPC>/', DeleteStoreProductAPIView.as_view(), name = 'delete-store-product'),
     path('delete-employee/<str:id_employee>/', DeleteEmployeeAPIView.as_view(), name = 'delete-employee'),
     path('delete-customer/<str:card_number>/', DeleteCustomerAPIView.as_view(), name = 'delete-customer'),
-    path('delete-check', DeleteCheckAPIView.as_view(), name = 'delete-check'),
+    path('delete-check/<str:check_number>/', DeleteCheckAPIView.as_view(), name = 'delete-check'),
 
     # urls for the report
-    path('statistics/', StatisticsAPIView.as_view(), name='statistics'),
     path('categories-summary/', CategoriesSummaryAPIView.as_view(), name='categories-revenue'), # Evelina
     path('sold-every-product/', SoldEveryProductAPIView.as_view(), name='sold-every-product'), # Evelina
     path('category-average-price/', CategoryAveragePrice.as_view(), name='category-average-price'), # Andrii
