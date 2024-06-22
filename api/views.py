@@ -1003,7 +1003,19 @@ class DeleteCheckAPIView(APIView):
     API view to delete Check for MANAGER
     """
     permission_classes = [IsManager]
-    pass
+    def delete(self, request, check_number, *args, **kwargs):
+        query = "DELETE FROM Check_Table WHERE check_number = %s;"
+        vals = [check_number]
+
+         # return result of query execution
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, vals)
+            return Response({'message': 'Check deleted successfully'}, status=status.HTTP_200_OK)
+        except IntegrityError as e:
+            return Response({'error': 'Check could not be deleted due to integrity error', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 # Evelina

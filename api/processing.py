@@ -13,6 +13,7 @@ def generate_unique_upc():
             if not cursor.fetchone():
                 return new_upc
 
+
 def process_store_products():
     """Process all rows in the Store_Product table 
     and create promotional products if conditions are met."""
@@ -33,7 +34,7 @@ def process_store_products():
                     WHERE id_product = %s AND promotional_product AND UPC != %s
                 """, [id_product, UPC])
                 if cursor.fetchone():
-                    print(f'A promotional product already exists for id_product {id_product}')
+                   # print(f'A promotional product already exists for id_product {id_product}')
                     continue
             else:
                 cursor.execute("""
@@ -41,7 +42,7 @@ def process_store_products():
                     WHERE id_product = %s AND NOT promotional_product AND UPC != %s
                 """, [id_product, UPC])
                 if cursor.fetchone():
-                    print(f'A normal product already exists for id_product {id_product}')
+               #     print(f'A normal product already exists for id_product {id_product}')
                     continue
 
             # Check conditions for creating promotional products
