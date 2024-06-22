@@ -95,6 +95,7 @@ class ProductsAPIView(APIView):
 class StoreProductsAPIView(APIView):
     """
     API view to retrieve store products using raw SQL for CASHIER
+    Currently used as homepage
     """
     permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
@@ -463,16 +464,25 @@ class AboutMeAPIView(APIView):
     API view to rethrive all info about CASHIER
     currently loggen in
     """
-    permission_classes = [IsCashierOrManager]
+    permission_classes = [IsCashier]
     def get(self, request, *args, **kwargs):
-        id_employee = request.GET.get('id')
+        user_id = request.user["id"]
+        with connection.cursor() as cursor:
+            cursor.execute(
+            "SELECT id_employee "
+            "FROM User_Table "
+            "WHERE user_id = %s",
+            [user_id])
+
+            cashier_id = cursor.fetchone()
+        
         employee_query = """SELECT * FROM EMPLOYEE
         WHERE id_employee = %s;
         """
         check_query = """ SELECT * FROM Check_Table
         WHERE id_employee = %s;
         """
-        params = [id_employee]
+        params = [cashier_id]
 
         with connection.cursor() as cursor:
             cursor.execute(employee_query, params)
@@ -526,6 +536,7 @@ class CustomerCardOverviewAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK) 
     
 
+# Why store overview when its only about checks?
 class ManagerStoreOverviewAPIView(APIView):
     permission_classes = [IsManager]
 
