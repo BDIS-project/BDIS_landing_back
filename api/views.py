@@ -13,6 +13,7 @@ import logging
 
 import random
 import string
+from decimal import Decimal
 
 from api.permissions import (
     IsAuthenticated,
@@ -766,24 +767,10 @@ class CustumerPercentAPIView(APIView):
 
 
 class CreateCheckAPIView(APIView):
-    permission_classes = [IsManager]
+    permission_classes = [IsCashier]
     def post(self, request, *args, **kwargs):
         client_id = request.data.get('client')
         sold_products = request.data.get('sold_products')
-
-        # Check if all necessary parameters are present
-        if not client_id or not sold_products:
-            return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if the amount is not more than products_number
-        for product in sold_products:
-            upc = product.get('upc')
-            amount = product.get('amount')
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT products_number FROM Store_Product WHERE UPC = %s", [upc])
-                result = cursor.fetchone()
-                if not result or result[0] < amount:
-                    return Response({'error': f'Not enough products in stock for UPC {upc}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if all necessary parameters are present
         if not client_id or not sold_products:
@@ -809,10 +796,57 @@ class CreateCheckAPIView(APIView):
                         return check_number
 
         check_number = generate_unique_check_number()
-
-        sum_total = 0
+        
+        sum_total = Decimal('0.0')
         try:
-            # Insert sales and calculate sum_total
+            # Calculate sum_total
+            for product in sold_products:
+                upc = product.get('upc')
+                amount = product.get('amount')
+
+                # Get selling price
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT selling_price FROM Store_Product WHERE UPC = %s", [upc])
+                    selling_price = cursor.fetchone()[0]
+
+                sum_total += Decimal(str(selling_price)) * Decimal(str(amount))
+
+            # Calculate total sum and VAT
+            vat = sum_total * Decimal('0.2')
+
+            # Get discount percentage
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT percent FROM Customer_Card WHERE card_number = %s",
+                    [client_id]
+                )
+                result = cursor.fetchone()
+                discount_percent = Decimal(str(result[0])) / Decimal('100.0') if result else Decimal('0.0')
+
+            sum_total = sum_total - (sum_total * discount_percent)
+
+            user_id = request.auth.user["user_id"]
+            with connection.cursor() as cursor:
+                cursor.execute(
+                "SELECT id_employee "
+                "FROM User_Table "
+                "WHERE user_id = %s",
+                [user_id]
+            )
+                
+            cashier_id = cursor.fetchone()
+
+            # Insert into Check_Table
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total)
+                    VALUES (%s, %s, %s, NOW(), %s)
+                    """,
+                    [check_number, cashier_id, client_id, sum_total]
+                )
+
+            # Insert sales
             for product in sold_products:
                 upc = product.get('upc')
                 amount = product.get('amount')
@@ -828,31 +862,6 @@ class CreateCheckAPIView(APIView):
                         "INSERT INTO Sale (UPC, check_number, product_number, selling_price) VALUES (%s, %s, %s, %s)",
                         [upc, check_number, amount, selling_price]
                     )
-                sum_total += selling_price * amount
-
-            # Calculate total sum and VAT
-            vat = sum_total * 0.2
-
-            # Get discount percentage
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT discount_percent FROM Customer_Card WHERE card_number = %s",
-                    [client_id]
-                )
-                result = cursor.fetchone()
-                discount_percent = result[0] / 100.0 if result else 0
-
-            sum_total = sum_total - (sum_total * discount_percent)
-
-            # Insert into Check_Table
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total, vat)
-                    VALUES (%s, %s, %s, NOW(), %s, %s)
-                    """,
-                    [check_number, 1005, client_id, sum_total, vat]
-                )
 
             return Response({'message': 'Check created successfully', 'check_number': check_number}, status=status.HTTP_201_CREATED)
 
@@ -971,11 +980,6 @@ class DeleteCheckAPIView(APIView):
     permission_classes = [IsManager]
     pass
     
-
-# APIS for report
-class StatisticsAPIView(APIView):
-    pass
-
 
 # Evelina
 class CategoriesSummaryAPIView(APIView):
