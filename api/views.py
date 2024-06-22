@@ -148,7 +148,7 @@ class StoreProductsAPIView(APIView):
             else:
                 query_conditions.append("AND UPC = %s")
                 params.append(search)
-                
+
         if promotional:
             query_conditions.append("AND promotional_product = %s")
             params.append(promotional.lower() == 'true')
@@ -823,6 +823,7 @@ class CreateCheckAPIView(APIView):
 
             # Calculate total sum and VAT
             vat = sum_total * Decimal('0.2')
+            sum_total = sum_total + vat
 
             # Get discount percentage
             with connection.cursor() as cursor:
