@@ -829,6 +829,7 @@ class CreateCheckAPIView(APIView):
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT selling_price FROM Store_Product WHERE UPC = %s", [upc])
                     selling_price = cursor.fetchone()[0]
+                    cursor.execute("UPDATE Store_Product SET products_number = products_number - %s WHERE UPC = %s", [amount, upc])
 
                 sum_total += Decimal(str(selling_price)) * Decimal(str(amount))
 
