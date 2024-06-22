@@ -165,9 +165,11 @@ class StoreProductsAPIView(APIView):
             query_conditions.append(f"AND Category.category_number IN ({','.join(['%s'] * len(category_list))})")
             params.extend(category_list)
         if in_stock:
-            query_conditions.append("AND products_number > 0")
+            if in_stock.lower() == 'true':
+                query_conditions.append("AND products_number > 0")
 
-        query = base_query + ' '.join(query_conditions) + f" ORDER BY {sorter};"
+        
+        query = base_query + ' '.join(query_conditions) + f" ORDER BY (products_number = 0), {sorter};"
 
         with connection.cursor() as cursor:
             cursor.execute(query, params)
