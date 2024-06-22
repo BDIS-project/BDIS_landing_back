@@ -1,4 +1,4 @@
-from django.db import connection
+from django.db import connection, IntegrityError
 import random
 import string
 from decimal import Decimal
@@ -26,7 +26,7 @@ def process_store_products():
 
         for row in rows:
             UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product = row
-            
+
             # Enforce single normal and promotional product
             if promotional_product:
                 cursor.execute("""
@@ -34,7 +34,7 @@ def process_store_products():
                     WHERE id_product = %s AND promotional_product AND UPC != %s
                 """, [id_product, UPC])
                 if cursor.fetchone():
-                   # print(f'A promotional product already exists for id_product {id_product}')
+                    print(f'A promotional product already exists for id_product {id_product}')
                     continue
             else:
                 cursor.execute("""
@@ -42,7 +42,7 @@ def process_store_products():
                     WHERE id_product = %s AND NOT promotional_product AND UPC != %s
                 """, [id_product, UPC])
                 if cursor.fetchone():
-               #     print(f'A normal product already exists for id_product {id_product}')
+                    print(f'A normal product already exists for id_product {id_product}')
                     continue
 
             # Check conditions for creating promotional products
@@ -54,15 +54,20 @@ def process_store_products():
                     # Generate new unique UPC
                     new_upc = generate_unique_upc()
 
-                    # Insert promotional product
-                    cursor.execute("""
-                        INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product)
-                        VALUES (%s, %s, %s, %s, %s, %s, TRUE);
-                    """, [new_upc, UPC, id_product, selling_price * Decimal('0.8'), products_number, expire_date])
+                    try:
+                        # Insert promotional product
+                        cursor.execute("""
+                            INSERT INTO Store_Product (UPC, UPC_prom, id_product, selling_price, products_number, expire_date, promotional_product)
+                            VALUES (%s, %s, %s, %s, %s, %s, TRUE);
+                        """, [new_upc, UPC, id_product, selling_price * Decimal('0.8'), products_number, expire_date])
 
-                    # Set non-promotional products_number to 0
-                    cursor.execute("""
-                        UPDATE Store_Product
-                        SET products_number = 0
-                        WHERE UPC = %s;
-                    """, [UPC])
+                        # Set non-promotional products_number to 0
+                        cursor.execute("""
+                            UPDATE Store_Product
+                            SET products_number = 0
+                            WHERE UPC = %s;
+                        """, [UPC])
+
+                    except IntegrityError as e:
+                        print(f'Error inserting promotional product for id_product {id_product}: {e}')
+                        continue
