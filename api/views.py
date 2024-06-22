@@ -1,4 +1,4 @@
-from django.db import connection, IntegrityError, transaction
+from django.db import connection, IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -99,6 +99,7 @@ class StoreProductsAPIView(APIView):
     """
     permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
+        process_store_products()
 
         search = request.GET.get('search')
         promotional = request.GET.get('promotional')
@@ -352,6 +353,7 @@ class StoreOverviewAPIView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
+        process_store_products()
         employee = request.GET.get('employee')
         role = request.GET.get('role')
         employee_surname = request.GET.get('employee-surname')

@@ -39,7 +39,7 @@ urlpatterns = [
     path('delete-store-product/<str:UPC>/', DeleteStoreProductAPIView.as_view(), name = 'delete-store-product'),
     path('delete-employee/<str:id_employee>/', DeleteEmployeeAPIView.as_view(), name = 'delete-employee'),
     path('delete-customer/<str:card_number>/', DeleteCustomerAPIView.as_view(), name = 'delete-customer'),
-    path('delete-check', DeleteCheckAPIView.as_view(), name = 'delete-check'),
+    path('delete-check/<str:check_number>/', DeleteCheckAPIView.as_view(), name = 'delete-check'),
 
     # urls for the report
     path('categories-summary/', CategoriesSummaryAPIView.as_view(), name='categories-revenue'), # Evelina
