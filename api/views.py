@@ -798,7 +798,7 @@ class CreateCheckAPIView(APIView):
         sold_products = request.data.get('sold_products')
 
         # Check if all necessary parameters are present
-        if not client_id or not sold_products:
+        if not sold_products:
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the amount is not more than products_number
@@ -841,14 +841,20 @@ class CreateCheckAPIView(APIView):
             vat = sum_total * Decimal('0.2')
             sum_total = sum_total + vat
 
-            # Get discount percentage
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT percent FROM Customer_Card WHERE card_number = %s",
-                    [client_id]
-                )
-                result = cursor.fetchone()
-                discount_percent = Decimal(str(result[0])) / Decimal('100.0') if result else Decimal('0.0')
+
+            # Get discount percentage if client ID is provided
+            discount_percent = Decimal('0.0')
+            if client_id:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT percent FROM Customer_Card WHERE card_number = %s",
+                        [client_id]
+                    )
+                    result = cursor.fetchone()
+                    if result:
+                        discount_percent = Decimal(str(result[0])) / Decimal('100.0')
+            else:
+                client_id = None
 
             sum_total = sum_total - (sum_total * discount_percent)
 
@@ -865,13 +871,23 @@ class CreateCheckAPIView(APIView):
 
             # Insert into Check_Table
             with connection.cursor() as cursor:
-                cursor.execute(
+                if cashier_id:
+                    cursor.execute(
                     """
                     INSERT INTO Check_Table (check_number, id_employee, card_number, print_date, sum_total)
                     VALUES (%s, %s, %s, NOW(), %s)
                     """,
                     [check_number, cashier_id, client_id, sum_total]
-                )
+                    )
+                else:
+                    cursor.execute(
+                    """
+                    INSERT INTO Check_Table (check_number, id_employee, print_date, sum_total)
+                    VALUES (%s, %s, NOW(), %s)
+                    """,
+                    [check_number, cashier_id, sum_total]
+                    )
+
 
             # Insert sales
             for product in sold_products:
