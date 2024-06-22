@@ -87,7 +87,7 @@ CREATE TABLE Check_Table (
     id_employee VARCHAR(10) NOT NULL, 
     card_number VARCHAR(13), 
     print_date TIMESTAMP NOT NULL, 
-    sum_total DECIMAL(13, 4), 
+    sum_total DECIMAL(13, 4) NOT NULL, 
     vat DECIMAL(13, 4) GENERATED ALWAYS AS (sum_total * 0.2) STORED, 
     FOREIGN KEY (id_employee) REFERENCES Employee(id_employee) 
         ON UPDATE CASCADE 
