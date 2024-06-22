@@ -98,8 +98,8 @@ class StoreProductsAPIView(APIView):
     """
     permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
-        upc = request.GET.get('UPC')
-        product_name = request.GET.get('product_name')
+
+        search = request.GET.get('search')
         promotional = request.GET.get('promotional')
         min_price = request.GET.get('minPrice')
         max_price = request.GET.get('maxPrice')
@@ -133,12 +133,22 @@ class StoreProductsAPIView(APIView):
             "WHERE 1=1 "
         )
 
-        if upc:
-            query_conditions.append("AND UPC = %s")
-            params.append(upc)
-        if product_name:
-            query_conditions.append("AND product_name LIKE %s")
-            params.append(product_name)
+        if search:
+            # Check for product name match first
+            product_name_query = (
+                "SELECT COUNT(*) FROM Product WHERE product_name LIKE %s"
+            )
+            with connection.cursor() as cursor:
+                cursor.execute(product_name_query, ['%' + search + '%'])
+                product_name_count = cursor.fetchone()[0]
+
+            if product_name_count > 0:
+                query_conditions.append("AND product_name LIKE %s")
+                params.append('%' + search + '%')
+            else:
+                query_conditions.append("AND UPC = %s")
+                params.append(search)
+                
         if promotional:
             query_conditions.append("AND promotional_product = %s")
             params.append(promotional.lower() == 'true')
@@ -825,16 +835,16 @@ class CreateCheckAPIView(APIView):
 
             sum_total = sum_total - (sum_total * discount_percent)
 
-            user_id = request.auth.user["user_id"]
+            user_id = request.user["id"]
             with connection.cursor() as cursor:
                 cursor.execute(
                 "SELECT id_employee "
                 "FROM User_Table "
                 "WHERE user_id = %s",
-                [user_id]
-            )
-                
-            cashier_id = cursor.fetchone()
+                [user_id])
+
+                cashier_id = cursor.fetchone()
+              
 
             # Insert into Check_Table
             with connection.cursor() as cursor:

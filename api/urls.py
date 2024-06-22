@@ -16,7 +16,7 @@ urlpatterns = [
     path('store-overview/', StoreOverviewAPIView.as_view(), name = 'store-overview'), # MANAGER
     path('about-me/', AboutMeAPIView.as_view(), name = 'about-me'), # CASHIER
     path('reports/', ReportsAPIView.as_view(), name = 'reports'), # MANAGER
-    path('customer-card-overview/', CustomerCardOverviewAPIView.as_view(), name = 'customer-card-overview'), # MANAGER
+    path('customer-card-overview/', CustomerCardOverviewAPIView.as_view(), name = 'customer-card-overview'), # MANAGER AND CASHIER
     path('manager-store-overview/', ManagerStoreOverviewAPIView.as_view(), name = 'manager-store-overview'), # MANAGER
 
     # urls for entities creation for MANAGER
