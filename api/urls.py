@@ -19,6 +19,12 @@ urlpatterns = [
     path('customer-card-overview/', CustomerCardOverviewAPIView.as_view(), name = 'customer-card-overview'), # MANAGER
     path('manager-store-overview/', ManagerStoreOverviewAPIView.as_view(), name = 'manager-store-overview'), # MANAGER
 
+    #testing this now
+    path('complete-check-overview/', CompleteSingleCheckOverviewAPIView.as_view(), name = 'complete-check-overview'), # MANAGER
+    path('count-sold-products-by-a-cahier/', ProductsSoldByACashierCount.as_view(), name = 'count-sold-products-by-a-cahier'), # MANAGER
+    path('count-sold-products-by-all-cahiers/', ProductsSoldByAllCashiersCount.as_view(), name = 'count-sold-products-by-all-cahiers'), # MANAGER
+    path('count-sold-single-product/', ProductSoldCountAPIView.as_view(), name = 'count-sold-single-product'), # MANAGER
+
     # urls for entities creation for MANAGER
     path('create-category/', CreateCategoryAPIView.as_view(), name = 'create-category'),
     path('create-product/', CreateProductAPIView.as_view(), name = 'create-product'),
@@ -29,11 +35,15 @@ urlpatterns = [
     path('create-check/', CreateCheckAPIView.as_view(), name = 'create-check'),
 
     # urls for updating
-    path('categories/<int:category_number>/updateCategory/', CategoriesAPIView.as_view(), name='update_category'), 
-    path('products/<int:id_product>/updateProduct/', ProductsAPIView.as_view(), name='update_product'), 
-    path('store-products/<str:UPC>/updateStoreProduct/', StoreProductsAPIView.as_view(), name='update_store_product'),
-    path('employee/<str:id_employee>/updateEmployee/', UpdateEmployeeAPIView.as_view(), name='update_employee'),
-    path('employee', UpdateEmployeeAPIView.as_view(), name='get_employee'),
+    path('categories/<int:category_number>/updateCategory/', Update_CategoriesAPIView.as_view(), name='update_category'), 
+    path('products/<int:id_product>/updateProduct/', Update_ProductsAPIView.as_view(), name='update_product'), 
+    path('store-products/<str:UPC>/updateStoreProduct/', Update_StoreProductsAPIView.as_view(), name='update_store_product'),
+    path('employee/<str:id_employee>/updateEmployee/', Update_EmployeeAPIView.as_view(), name='update_employee'),
+    path('employee', EmployeeAPIView.as_view(), name='get_employee'), #delete this line later (doesnt update),
+    path('customerCard/<str:card_number>/updateCustomerCard/', Update_CustomerCardView.as_view(), name='update_customer_card'),
+    path('customerCard', CustomerCardAPiView.as_view(), name='get_customer_card'), #delete this line later (doesnt update)
+    path('check/<str:check_number>/updateCheck/', Update_CheckTableView.as_view(), name='update_check'),
+    path('check', CheckTableView.as_view(), name='get_check'), #delete this line later (doesnt update)
 
     # urls for entities deletion for MANAGER
     path('delete-category/<int:category_number>/', DeleteCategoryAPIView.as_view(), name='delete-category'),

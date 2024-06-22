@@ -14,6 +14,8 @@ import logging
 
 import random
 import string
+import json
+from django.http import HttpResponse
 
 from api.permissions import (
     IsAuthenticated,
@@ -486,11 +488,6 @@ class AboutMeAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
     
-
-class ReportsAPIView(APIView):
-    pass
-
-
 class CustomerCardOverviewAPIView(APIView):
     permission_classes = [IsCashierOrManager]
 
@@ -517,29 +514,35 @@ class CustomerCardOverviewAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK) 
     
 
-class ManagerStoreOverviewAPIView(APIView):
+class CompleteSingleCheckOverviewAPIView(APIView):
     permission_classes = [IsManager]
 
     def get(self, request, *args, **kwargs):
-        view_check = request.GET.get('view_check')
+        check_number = request.GET.get('check_number')
         with_details = request.GET.get('with_details')
         cashier_id = request.GET.get('cashier_id') 
         start_date = request.GET.get('start_date')
         end_date = request.GET.get('end_date')
-        all_cashiers = request.GET.get('all_cashiers')
         
         query_conditions = []
         params = []
 
         base_query = "SELECT * FROM Check_Table WHERE 1=1"
+        query = ''
 
-        if view_check:
+        if with_details and check_number:
+            # Product.id_product, product_name, Sale.UPC, Sale.selling_price, Sale.product_number 
+            query = """
+            SELECT Product.id_product, product_name, Sale.UPC, Sale.selling_price, Sale.product_number 
+            FROM ((Check_Table INNER JOIN Sale ON Check_Table.check_number = Sale.check_number) 
+                INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC) 
+                INNER JOIN Product ON Store_Product.id_product = Product.id_product
+            WHERE Check_Table.check_number = %s;
+            """
+            params.append(check_number)
+        elif check_number:
             query_conditions.append(" AND check_number = %s")
-            params.append(view_check)
-        if with_details:
-            query = "SELECT Product.id_product, product_name, UPC, Sale.selling_price, Sale.product_number FROM ((Check_Table INNER JOIN Sale ON Check_Table.check_number = Sale.check_number) INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC) INNER JOIN Product ON Store_Product.id_product = Product.id_product WHERE Check_Table.check_number = %s;"
-            params.append(view_check)
-
+            params.append(check_number)
         elif cashier_id:
             query_conditions.append(" AND id_employee = %s")
             params.append(cashier_id)
@@ -556,14 +559,236 @@ class ManagerStoreOverviewAPIView(APIView):
 
         if not with_details:
             query = base_query + ' '.join(query_conditions) + " ORDER BY print_date;"
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            customers = cursor.fetchall()
-            last_name = [col[0] for col in cursor.description]
 
-        result = [dict(zip(last_name, customer)) for customer in customers]
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                customers = cursor.fetchall()
+                last_name = [col[0] for col in cursor.description]
 
-        return Response(result, status=status.HTTP_200_OK) 
+            result = [dict(zip(last_name, customer)) for customer in customers]
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class CompleteEveryChecksOverviewAPIView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        check_number = request.GET.get('check_number')
+        with_details = request.GET.get('with_details')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        query_conditions = []
+        params = []
+
+        base_query = "SELECT * FROM Check_Table WHERE 1=1"
+        query = ''
+
+        if with_details and check_number:
+            query = """
+            SELECT Product.id_product, product_name, Sale.UPC, Sale.selling_price, Sale.product_number 
+            FROM ((Check_Table INNER JOIN Sale ON Check_Table.check_number = Sale.check_number) 
+                INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC) 
+                INNER JOIN Product ON Store_Product.id_product = Product.id_product
+            WHERE Check_Table.check_number = %s;
+            """
+            params.append(check_number)
+        elif check_number:
+            query_conditions.append(" AND check_number = %s")
+            params.append(check_number)
+        elif start_date and end_date:
+            query_conditions.append(" AND print_date BETWEEN %s AND %s")
+            params.append(start_date)
+            params.append(end_date)
+        elif start_date:
+            query_conditions.append(" AND print_date >= %s AND print_date <= NOW()")
+            params.append(start_date)
+        elif end_date:
+            query_conditions.append(" AND print_date >= %s AND print_date <= NOW()")
+            params.append(end_date)
+
+        if not with_details:
+            query = base_query + ' '.join(query_conditions) + " ORDER BY print_date;"
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                customers = cursor.fetchall()
+                last_name = [col[0] for col in cursor.description]
+
+            result = [dict(zip(last_name, customer)) for customer in customers]
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ProductsSoldByACashierCount(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        cashier_id = request.GET.get('cashier_id') 
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        query_conditions = []
+        params = []
+
+        base_query = """
+            SELECT COALESCE(SUM(subquery.total_sum), 0) AS overall_total_sum
+            FROM (
+                SELECT SUM(Sale.product_number) AS total_sum
+                FROM Check_Table
+                    INNER JOIN Sale ON Check_Table.check_number = Sale.check_number
+                    INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+                    INNER JOIN Product ON Store_Product.id_product = Product.id_product
+                WHERE 1=1
+            """
+        
+        if not cashier_id:
+            return Response({'error': 'Parameter cashier_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if cashier_id:
+            query_conditions.append(" AND id_employee = %s")
+            params.append(cashier_id)
+        
+        if start_date and end_date:
+            query_conditions.append(" AND print_date BETWEEN %s AND %s")
+            params.append(start_date)
+            params.append(end_date)
+        elif start_date:
+            query_conditions.append(" AND print_date >= %s")
+            params.append(start_date)
+        elif end_date:
+            query_conditions.append(" AND print_date <= %s")
+            params.append(end_date)
+
+        query = base_query + ' '.join(query_conditions) + """
+                GROUP BY Check_Table.check_number
+            ) AS subquery;
+        """
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+                columns = [col[0] for col in cursor.description]
+
+            results = []
+            for row in rows:
+                results.append(dict(zip(columns, row)))
+
+            return Response(results, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ProductsSoldByAllCashiersCount(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        query_conditions = []
+        params = []
+
+        base_query = """
+            SELECT COALESCE(SUM(subquery.total_sum), 0) AS overall_total_sum
+            FROM (
+                SELECT SUM(Sale.product_number) AS total_sum
+                FROM Check_Table
+                    INNER JOIN Sale ON Check_Table.check_number = Sale.check_number
+                    INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+                    INNER JOIN Product ON Store_Product.id_product = Product.id_product
+                WHERE 1=1
+            """
+        
+        if start_date and end_date:
+            query_conditions.append(" AND print_date BETWEEN %s AND %s")
+            params.append(start_date)
+            params.append(end_date)
+        elif start_date:
+            query_conditions.append(" AND print_date >= %s")
+            params.append(start_date)
+        elif end_date:
+            query_conditions.append(" AND print_date <= %s")
+            params.append(end_date)
+
+        query = base_query + ' '.join(query_conditions) + """
+                GROUP BY Check_Table.check_number
+            ) AS subquery;
+        """
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+                columns = [col[0] for col in cursor.description]
+
+            results = []
+            for row in rows:
+                results.append(dict(zip(columns, row)))
+
+            return Response(results, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ProductSoldCountAPIView(APIView): # maybe need to change use UPC insted of id_product
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        product_id = request.GET.get('product_id') 
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        query_conditions = []
+        params = []
+
+        base_query = """
+            SELECT COALESCE(SUM(Sale.product_number), 0) AS total_quantity_sold
+            FROM Check_Table
+                INNER JOIN Sale ON Check_Table.check_number = Sale.check_number
+                INNER JOIN Store_Product ON Sale.UPC = Store_Product.UPC
+                INNER JOIN Product ON Store_Product.id_product = Product.id_product
+            WHERE 1=1
+            """
+        
+        if not product_id:
+            return Response({'error': 'Parameter product_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if product_id:
+            query_conditions.append(" AND Product.id_product = %s")
+            params.append(product_id)
+        
+        if start_date and end_date:
+            query_conditions.append(" AND print_date BETWEEN %s AND %s")
+            params.append(start_date)
+            params.append(end_date)
+        elif start_date:
+            query_conditions.append(" AND print_date >= %s")
+            params.append(start_date)
+        elif end_date:
+            query_conditions.append(" AND print_date <= %s")
+            params.append(end_date)
+
+        query = base_query + ' '.join(query_conditions) + ";"
+
+    
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                products = cursor.fetchall()
+                product_id = [col[0] for col in cursor.description]
+
+            result = [dict(zip(product_id, product)) for product in products]
+            return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CreateCategoryAPIView(APIView):
@@ -962,9 +1187,55 @@ class DeleteCheckAPIView(APIView):
     pass
     
 
-# APIS for report
-class StatisticsAPIView(APIView):
-    pass
+# APIS for report (task 4 for Manager)
+class CompleteStatisticsAPIView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        result = self.create_report()
+
+        return Response(result, status=status.HTTP_200_OK)
+
+    def create_report(self, path, *args, **kwargs):
+        json_report_as_string = """
+        {
+            "report": {
+
+        """
+
+        #create json from Category table
+        category_json = self.table_to_json_string("Category")
+        product_json = self.table_to_json_string("Product")
+        store_product_json = self.table_to_json_string("Store_Product")
+        employee_json = self.table_to_json_string("Employee")
+        customer_card_json = self.table_to_json_string("Customer_Card")
+        check_table_json = self.table_to_json_string("Check_Table")
+        sale_json = self.table_to_json_string("Sale")
+
+        json_report_as_string += category_json
+        json_report_as_string += product_json
+        json_report_as_string += store_product_json
+        json_report_as_string += employee_json
+        json_report_as_string += customer_card_json
+        json_report_as_string += check_table_json
+        json_report_as_string += sale_json
+
+        json_report_as_string += """
+            }
+        }
+        """
+
+
+    def table_to_json_string(self, table_name, *args, **kwargs):
+        query = f"SELECT * FROM {table_name};"
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            columns = [col[0] for col in cursor.description]
+            rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        return json.dumps(rows)
+
 
 
 # Evelina
@@ -1155,17 +1426,17 @@ class CategoryProductInfo(APIView):
         lower_end_quantity = request.GET.get('lower_end_quantity')
 
         query = """
-        SELECT c.category_number, c.category_name, COALESCE(SUM(products_number),0) AS count
+        SELECT c.category_number, c.category_name, COALESCE(SUM(store_product.products_number),0) AS count
         FROM (Category AS c LEFT JOIN Product ON c.category_number = Product.category_number)
         LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
         GROUP BY c.category_number, c.category_name
-        ORDER BY c.category_number, c.category_name
+    
         """
 
         if lower_end_quantity is not None:
-            query += ' HAVING Nz(SUM(product_number),0)>%s'
+            query += ' HAVING COALESCE(SUM(store_product.product_number),0)>%s'
         
-        query += ';'
+        query += ' ORDER BY c.category_number, c.category_name;'
 
         with connection.cursor() as cursor:
             cursor.execute(query, [lower_end_quantity])
@@ -1191,10 +1462,6 @@ from django.db import connection, IntegrityError
 import hashlib
 
 from .permissions import IsCashier, IsManager
-
-# adding edit functionality to the data base
-# tables: Category, Product, Store_Product, Employee, Customer_Card, Check_Table, Sale
-# done:   Category, Product, Store_Product, Employee,
 
 class ManagerStoreOverviewAPIView(APIView):
     permission_classes = []
@@ -1317,7 +1584,10 @@ class CheckOverviewAPIView(APIView):
         result = [dict(zip(check_number, check)) for check in checks]
 
         return Response(result, status=status.HTTP_200_OK) 
-    
+
+
+
+
 class CategoriesAPIView(APIView):
     """
     API view to retrieve, update all categories using raw SQL.
@@ -1336,21 +1606,23 @@ class CategoriesAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
 
-class UpdateCategoriesAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        category_number = kwargs.get('category_number')
+class Update_CategoriesAPIView(APIView):
+    permission_classes = [IsManager]
+
+    def post(self, request, category_number, *args, **kwargs):
         category_name = request.data.get('category_name')
 
-        if not category_number or not category_name:
+        if not category_name:
             return Response({"error": "Category number and category_name are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         cursor = connection.cursor()
 
         query = "UPDATE Category SET category_name = %s WHERE category_number = %s;"
-        cursor.execute(query, (category_name, category_number))
+        cursor.execute(query, [category_name, category_number])
         connection.commit()
 
         return Response({"message": "Category updated successfully"}, status=status.HTTP_200_OK)
+
 
 class ProductsAPIView(APIView):
     """
@@ -1373,6 +1645,8 @@ class ProductsAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
     
 class Update_ProductsAPIView(APIView):
+    permission_classes = [IsManager]
+
     def post(self, request, id_product, *args, **kwargs):
         category_number = request.data.get('category_number')
         product_name = request.data.get('product_name')
@@ -1413,6 +1687,7 @@ class Update_ProductsAPIView(APIView):
         connection.commit()
 
         return Response({"id_product": updated_id_product, "message": "Product updated successfully"}, status=status.HTTP_200_OK)
+
 
 class StoreProductsAPIView(APIView):
     """
@@ -1497,7 +1772,9 @@ class StoreProductsAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
     
-class UpdateStoreProductsAPIView(APIView):
+class Update_StoreProductsAPIView(APIView):
+    permission_classes = [IsCashierOrManager]
+
     def post(self, request, UPC, *args, **kwargs):
         # Extract all possible fields that can be updated
         upc_prom = request.data.get('upc_prom')
@@ -1584,12 +1861,13 @@ class UpdateStoreProductsAPIView(APIView):
 
             return Response({"message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
         
-# for now not separated
-class UpdateEmployeeAPIView(APIView):
+
+class EmployeeAPIView(APIView):
+    permission_classes = [IsManager]
+
     def get(self, request, *args, **kwargs):
         query = """
-            SELECT id_employee, empl_surname, empl_name, empl_patronymic, empl_role, salary,
-                   date_of_birth, date_of_start, phone_number, city, street, zip_code
+            SELECT *
             FROM Employee
             ORDER BY id_employee;
         """
@@ -1609,7 +1887,9 @@ class UpdateEmployeeAPIView(APIView):
 
         return Response(results, status=status.HTTP_200_OK)
 
-    
+class Update_EmployeeAPIView(APIView):
+    permission_classes = [IsManager]
+
     def post(self, request, id_employee, *args, **kwargs):
         # Extract all possible fields that can be updated
         empl_surname = request.data.get('empl_surname')
@@ -1684,7 +1964,177 @@ class UpdateEmployeeAPIView(APIView):
 
         except IntegrityError as e:
             connection.rollback()
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+
+
+class CustomerCardAPiView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        query = """
+            SELECT *
+            FROM Customer_Card
+            ORDER BY card_number;
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            customer_cards = cursor.fetchall()
+            customer_card_fields = [col[0] for col in cursor.description]
+
+        results = []
+
+        for card in customer_cards:
+            card_data = dict(zip(customer_card_fields, card))
+            results.append(card_data)
+
+        return Response(results, status=status.HTTP_200_OK)
+
+class Update_CustomerCardView(APIView):
+    permission_classes = [IsManager]
+
+    def post(self, request, card_number, *args, **kwargs):
+        # Extract all possible fields that can be updated
+        cust_surname = request.data.get('cust_surname')
+        cust_name = request.data.get('cust_name')
+        cust_patronymic = request.data.get('cust_patronymic')
+        phone_number = request.data.get('phone_number')
+        city = request.data.get('city')
+        street = request.data.get('street')
+        zip_code = request.data.get('zip_code')
+        percent = request.data.get('percent')
+
+        cursor = connection.cursor()
+
+        # Build the SET clause dynamically based on provided fields
+        set_values = []
+        params = []
+
+        if cust_surname is not None:
+            set_values.append("cust_surname = %s")
+            params.append(cust_surname)
+        if cust_name is not None:
+            set_values.append("cust_name = %s")
+            params.append(cust_name)
+        if cust_patronymic is not None:
+            set_values.append("cust_patronymic = %s")
+            params.append(cust_patronymic)
+        if phone_number is not None:
+            set_values.append("phone_number = %s")
+            params.append(phone_number)
+        if city is not None:
+            set_values.append("city = %s")
+            params.append(city)
+        if street is not None:
+            set_values.append("street = %s")
+            params.append(street)
+        if zip_code is not None:
+            set_values.append("zip_code = %s")
+            params.append(zip_code)
+        if percent is not None:
+            set_values.append("percent = %s")
+            params.append(percent)
+
+        # If no fields to update are provided, return an error response
+        if not set_values:
+            return Response({"error": "At least one attribute (cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent) is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Update all specified attributes
+            set_clause = ', '.join(set_values)
+            query = f"""
+                UPDATE Customer_Card
+                SET {set_clause}
+                WHERE card_number = %s;
+            """
+            params.append(card_number)
+            cursor.execute(query, params)
+            connection.commit()
+
+            return Response({"message": "Customer card information updated successfully"}, status=status.HTTP_200_OK)
+
+        except IntegrityError as e:
+            connection.rollback()
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CheckTableView(APIView):
+    permission_classes = [IsManager]
+
+    def get(self, request, *args, **kwargs):
+        query = """
+            SELECT check_number, id_employee, card_number, print_date, sum_total, vat
+            FROM Check_Table
+            ORDER BY print_date DESC;
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            checks = cursor.fetchall()
+            check_fields = [col[0] for col in cursor.description]
+
+        results = []
+
+        for check in checks:
+            check_data = dict(zip(check_fields, check))
+            results.append(check_data)
+
+        return Response(results, status=status.HTTP_200_OK)
+
+class Update_CheckTableView(APIView):
+    permission_classes = [IsManager]
+
+    def post(self, request, check_number, *args, **kwargs):
+        id_employee = request.data.get('id_employee')
+        card_number = request.data.get('card_number')
+        print_date = request.data.get('print_date')
+        sum_total = request.data.get('sum_total')
+
+        cursor = connection.cursor()
+
+        # Build the SET clause dynamically based on provided fields
+        set_values = []
+        params = []
+
+        if id_employee is not None:
+            set_values.append("id_employee = %s")
+            params.append(id_employee)
+        if card_number is not None:
+            set_values.append("card_number = %s")
+            params.append(card_number)
+        if print_date is not None:
+            set_values.append("print_date = %s")
+            params.append(print_date)
+        if sum_total is not None:
+            set_values.append("sum_total = %s")
+            params.append(sum_total)
+
+        # If no fields to update are provided, return an error response
+        if not set_values:
+            return Response({"error": "At least one attribute (id_employee, card_number, print_date, sum_total) is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Update all specified attributes
+            set_clause = ', '.join(set_values)
+            query = f"""
+                UPDATE Check_Table
+                SET {set_clause}
+                WHERE check_number = %s;
+            """
+            params.append(check_number)
+            cursor.execute(query, params)
+            connection.commit()
+
+            return Response({"message": "Check information updated successfully"}, status=status.HTTP_200_OK)
+
+        except IntegrityError as e:
+            connection.rollback()
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+# for now not separated
 
 class StoreOverviewAPIView(APIView):
     """
