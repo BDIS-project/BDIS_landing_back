@@ -1113,7 +1113,7 @@ class CategoryAveragePrice(APIView):
         SELECT 
             Category.category_number, 
             Category.category_name, 
-            COALESCE(AVG(Store_Product.selling_price), 0) AS avg_selling_price
+            COALESCE(ROUND(AVG(Store_Product.selling_price), 2), 0) AS avg_selling_price
         FROM 
             Category 
             LEFT JOIN Product ON Category.category_number = Product.category_number
