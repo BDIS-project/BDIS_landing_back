@@ -1765,31 +1765,20 @@ class CategoryProductInfo(APIView):
 
         lower_end_quantity = request.GET.get('lower_end_quantity')
 
-        lower_end_quantity = request.GET.get('lower_end_quantity')
-
         query = """
-        SELECT c.category_number, c.category_name, COALESCE(SUM(products_number),0) AS count
+        SELECT c.category_number, c.category_name, COALESCE(SUM(store_product.products_number),0) AS count
         FROM (Category AS c LEFT JOIN Product ON c.category_number = Product.category_number)
         LEFT JOIN Store_Product ON Product.id_product = Store_Product.id_product
         GROUP BY c.category_number, c.category_name
-        
+    
         """
 
         if lower_end_quantity is not None:
             query += ' HAVING COALESCE(SUM(store_product.products_number),0)>%s'
-        else:
-            query += ' ORDER BY c.category_number, c.category_name'
-        query += ';'
-        
-
-
-        if lower_end_quantity is not None:
-            query += ' HAVING COALESCE(SUM(product_number),0)>%s'
         
         query += ' ORDER BY c.category_number, c.category_name;'
 
         with connection.cursor() as cursor:
-            cursor.execute(query, [lower_end_quantity])
             cursor.execute(query, [lower_end_quantity])
             rows = cursor.fetchall()
             columns = [col[0] for col in cursor.description]
