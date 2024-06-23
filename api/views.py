@@ -281,6 +281,114 @@ class StoreOverviewAPIView(APIView):
     """
     permission_classes = [IsManager]
 
+    def get(self, request, *args, **kwargs):
+        process_store_products()
+        employee = request.GET.get('employee')
+        role = request.GET.get('role')
+        employee_surname = request.GET.get('employee-surname')
+        customer = request.GET.get('customer')
+        percent = request.GET.get('percent')
+        categories = request.GET.get('categories')
+        category = request.GET.get('category')
+        products = request.GET.get('products')
+        store_products = request.GET.get('store-products')
+        sort_by = request.GET.get('sort-by')
+        promotional = request.GET.get('promotional')
+        non_promotional = request.GET.get('non-promotional')
+        upc = request.GET.get('upc')
+
+        sorter = "product_name"
+        if sort_by:
+            if sort_by == 'products-desc':
+                sorter = "product_name DESC"
+            elif sort_by == 'products-asc':
+                sorter = "product_name"
+            elif sort_by == 'price-desc':
+                sorter = "selling_price DESC"
+            elif sort_by == 'price-asc':
+                sorter = "selling_price"
+            elif sort_by == 'numbers-desc':
+                sorter = "products_number DESC"
+            else:
+                sorter = "products_number"
+
+        query = []
+        params = []
+
+        if employee is not None:
+            query = ["SELECT * FROM Employee"] # Get all employees sorted by surname
+            if role:
+                query.append("WHERE empl_role = %s") # Get all cashiers sorted by surname
+                params.append(role)
+            query.append("ORDER BY empl_surname;")
+        elif employee_surname: # Get employee address and phone number by surname
+            query = [
+                "SELECT city, street, phone_number ",
+                "FROM Employee ",
+                "WHERE empl_surname = %s"
+            ]
+            params.append(employee_surname)
+        elif customer is not None: # Get all regular customers 
+            query = ["SELECT * FROM Customer_Card"]
+            if percent:
+                query.append("WHERE percent = %s")
+                params.append(percent)
+            query.append("ORDER BY cust_surname;")
+        elif categories is not None:
+            query = ["SELECT * FROM Category ORDER BY category_name;"]
+        elif products is not None:
+            query = [
+                "SELECT Product.*, category_name ",
+                "FROM Product INNER JOIN Category ON Product.category_number = Category.category_number "
+            ]
+            if category:
+                query.append("WHERE category_name = %s ")
+                params.append(category)
+        elif store_products is not None:
+            query = [
+                "SELECT Store_Product.*, product_name, category_name ",
+                "FROM Store_Product ",
+                "INNER JOIN Product ON Store_Product.id_product = Product.id_product ",
+                "INNER JOIN Category ON Product.category_number = Category.category_number "
+            ]
+            if promotional:
+                query.append("WHERE promotional_product = TRUE")
+            elif non_promotional:
+                query.append("WHERE promotional_product = FALSE")
+            if sort_by:
+                query.append(f"ORDER BY {sorter};")
+            else:
+                query.append("ORDER BY product_name")
+        elif upc:
+            query = [
+                "SELECT product_name, selling_price, products_number, characteristics ",
+                "FROM Store_Product ",
+                "INNER JOIN Product ON Store_Product.id_product = Product.id_product ",
+                "WHERE upc = %s;"
+            ]
+            params.append(upc)
+
+        if not query:
+            return Response({"error": "No query to execute"}, status=status.HTTP_400_BAD_REQUEST)
+
+        final_query = " ".join(query)
+
+        with connection.cursor() as cursor:
+            cursor.execute(final_query, params)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = []
+        for row in rows:
+            product = dict(zip(columns, row))
+            if 'promotional_product' in product and product['promotional_product']:
+                product['original_price'] = round(float(product['selling_price']) / 0.8, 2)
+            if 'selling_price' in product:
+                product['selling_price'] = round(float(product['selling_price']), 2)
+            result.append(product)
+
+        return Response(result, status=status.HTTP_200_OK)
+
     
     
 
