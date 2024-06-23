@@ -61,13 +61,12 @@ class StoreProductsAPIView(APIView):
         process_store_products()
 
         search = request.GET.get('search')
-        promotional = request.GET.get('promotional')
         min_price = request.GET.get('minPrice')
         max_price = request.GET.get('maxPrice')
         categories = request.GET.get('categories')
         in_stock = request.GET.get('inStock')
         sort_by = request.GET.get('sort')
-
+        viewPromotional = request.GET.get('viewPromotional')
         query_conditions = []
         params = []
 
@@ -85,6 +84,13 @@ class StoreProductsAPIView(APIView):
                 sorter = "products_number DESC"
             else:
                 sorter = "products_number"
+
+        promotional = None
+        if viewPromotional == "promo":
+            promotional = True
+        elif viewPromotional == "no-promo":
+            promotional = False
+         
            
         base_query = (
             "SELECT Store_Product.*, product_name, category_name, picture "
@@ -110,9 +116,10 @@ class StoreProductsAPIView(APIView):
                 query_conditions.append("AND UPC = %s")
                 params.append(search)
 
-        if promotional:
+        if promotional is not None:
             query_conditions.append("AND promotional_product = %s")
-            params.append(promotional.lower() == 'true')
+            params.append(promotional)
+
         if min_price:
             query_conditions.append("AND selling_price >= %s")
             params.append(min_price)
