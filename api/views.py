@@ -397,6 +397,27 @@ class AboutMeAPIView(APIView):
     permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
         cashier_id = request.GET.get('id')
+        period = request.GET.get('period')
+
+        if period == 'day':
+            start_date = datetime.now() - timedelta(days=1)
+        elif period == 'week':
+            start_date = datetime.now() - timedelta(weeks=1)
+        elif period == 'month':
+            start_date = datetime.now() - timedelta(days=30)
+        elif period == 'year':
+            start_date = datetime.now() - timedelta(days=365)
+        elif period == 'all':
+            start_date = None
+        else:
+            return Response({"error": "Invalid period specified"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if start_date:
+            base_query += " WHERE print_date >= %s"
+            params.append(start_date)
+        elif period == 'all':
+            pass  # No additional conditions for 'all' period
+        
         if not cashier_id:
             user_id = request.user["id"]
             user_role = request.user["role"]
@@ -406,8 +427,8 @@ class AboutMeAPIView(APIView):
                 cursor.execute(
                 "SELECT id_employee "
                 "FROM User_Table "
-                "WHERE user_id = %s",
-                [user_id])
+                "WHERE user_id = %s and print_date > %s",
+                [user_id, start_date])
 
                 cashier_id = cursor.fetchone()
         
@@ -425,6 +446,13 @@ class AboutMeAPIView(APIView):
             employee_names = [col[0] for col in cursor.description]
 
         employee_result = [dict(zip(employee_names, empl)) for empl in employee]
+
+        # Query to get checks info
+        if start_date:
+            check_query = """ SELECT * FROM Check_Table WHERE id_employee = %s AND print_date >= %s"""
+            params.append(start_date)
+        else:
+            check_query = """ SELECT * FROM Check_Table WHERE id_employee = %s"""
 
         with connection.cursor() as cursor:
             cursor.execute(check_query, params)
