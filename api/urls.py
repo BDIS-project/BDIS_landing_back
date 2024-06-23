@@ -10,6 +10,7 @@ urlpatterns = [
     # urls for DQL-queries
     path('products/', ProductsAPIView.as_view(), name = 'products'), # CASHIER
     path('store-products/', StoreProductsAPIView.as_view(), name='store-products'), # CASHIER
+    path('only-store-product/', OnlyStoreProductsAPIView.as_view(), name = 'only-store-product'), # MANAGER CASHIER
     path('check-overview/', CheckOverviewAPIView.as_view(), name = 'check-overview'), # CASHIER
     path('categories/', CategoriesAPIView.as_view(), name='get_categories'), # CASHIER, DROPDOWN LIST
     path('product-names/', ProductNamesAPIView.as_view(), name = 'product-names'), # DROPDOWN LIST

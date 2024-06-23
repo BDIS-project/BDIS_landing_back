@@ -147,6 +147,31 @@ class StoreProductsAPIView(APIView):
         return Response(result, status=status.HTTP_200_OK)
     
 
+class OnlyStoreProductsAPIView(APIView):
+    """
+    API view to retrieve all info about store products
+    and store products only, for MANAGER and CASHIER
+    """
+    permission_classes = [IsCashierOrManager]
+    def get(self, request, *args, **kwargs):
+        query = "SELECT * FROM Store_Product;"
+
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [col[0] for col in cursor.description]
+
+        result = []
+        for row in rows:
+            product = dict(zip(columns, row))
+            if 'promotional_product' in product and product['promotional_product']:
+                product['original_price'] = round(float(product['selling_price']) / 0.8, 2)
+            if 'selling_price' in product:
+                product['selling_price'] = round(float(product['selling_price']), 2)
+            result.append(product)
+
+        return Response(result, status=status.HTTP_200_OK)
+
 class CheckOverviewAPIView(APIView):
     """
     API view to retrieve store products using raw SQL for CASHIER
