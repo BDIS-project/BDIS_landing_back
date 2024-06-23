@@ -414,12 +414,7 @@ class AboutMeAPIView(APIView):
             start_date = None
         else:
             return Response({"error": "Invalid period specified"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if start_date:
-            base_query += " WHERE print_date >= %s"
-            params.append(start_date)
-        elif period == 'all':
-            pass  # No additional conditions for 'all' period
+        
         
         if not cashier_id:
             user_id = request.user["id"]
@@ -430,8 +425,8 @@ class AboutMeAPIView(APIView):
                 cursor.execute(
                 "SELECT id_employee "
                 "FROM User_Table "
-                "WHERE user_id = %s and print_date > %s",
-                [user_id, start_date])
+                "WHERE user_id = %s",
+                [user_id])
 
                 cashier_id = cursor.fetchone()
         
