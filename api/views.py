@@ -1172,14 +1172,13 @@ class Update_ProductsAPIView(APIView):
 class Update_StoreProductsAPIView(APIView):
     permission_classes = [IsCashierOrManager]
 
-    def post(self, request, UPC, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         # Extract all possible fields that can be updated
-        upc_prom = request.data.get('upc_prom')
+        upc = request.data.get('upc')
         id_product = request.data.get('id_product')
         selling_price = request.data.get('selling_price')
         products_number = request.data.get('products_number')
         expire_date = request.data.get('expire_date')
-        promotional_product = request.data.get('promotional_product')
 
         cursor = connection.cursor()
 
@@ -1187,9 +1186,9 @@ class Update_StoreProductsAPIView(APIView):
         set_values = []
         params = []
 
-        if upc_prom is not None:
-            set_values.append("UPC_prom = %s")
-            params.append(upc_prom)
+        if upc is not None:
+            set_values.append("UPC = %s")
+            params.append(upc)
         if id_product is not None:
             set_values.append("id_product = %s")
             params.append(id_product)
@@ -1202,13 +1201,7 @@ class Update_StoreProductsAPIView(APIView):
         if expire_date is not None:
             set_values.append("expire_date = %s")
             params.append(expire_date)
-        if promotional_product is not None:
-            set_values.append("promotional_product = %s")
-            params.append(promotional_product)
-
-        # If no fields to update are provided, return an error response
-        if not set_values:
-            return Response({"error": "At least one attribute (upc_prom, id_product, selling_price, products_number, expire_date, promotional_product) is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
 
         # Check current promotional status for the given UPC
         query = """
@@ -1216,47 +1209,26 @@ class Update_StoreProductsAPIView(APIView):
             FROM Store_Product
             WHERE UPC = %s;
         """
-        cursor.execute(query, [UPC])
+        cursor.execute(query, [upc])
         row = cursor.fetchone()
 
         if not row:
             return Response({"error": "Store Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
         id_product, current_promotional = row
+       
+        # No change in promotional status, only update specified attributes
+        set_clause = ', '.join(set_values)
+        query = f"""
+            UPDATE Store_Product
+            SET {set_clause}
+            WHERE UPC = %s;
+        """
+        params.append(upc)
+        cursor.execute(query, params)
+        connection.commit()
 
-        # Check if updating promotional_product would violate the unique constraint
-        if promotional_product is not None and promotional_product != current_promotional:
-            try:
-                # Update all specified attributes
-                set_clause = ', '.join(set_values)
-                query = f"""
-                    UPDATE Store_Product
-                    SET {set_clause}
-                    WHERE UPC = %s;
-                """
-                params.append(UPC)
-                cursor.execute(query, params)
-                connection.commit()
-
-                return Response({"message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
-
-            except IntegrityError as e:
-                connection.rollback()
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        else:
-            # No change in promotional status, only update specified attributes
-            set_clause = ', '.join(set_values)
-            query = f"""
-                UPDATE Store_Product
-                SET {set_clause}
-                WHERE UPC = %s;
-            """
-            params.append(UPC)
-            cursor.execute(query, params)
-            connection.commit()
-
-            return Response({"message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
+        return Response({"message": "Store Product updated successfully"}, status=status.HTTP_200_OK)
         
 
 class Update_EmployeeAPIView(APIView):
