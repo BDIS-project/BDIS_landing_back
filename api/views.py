@@ -1215,7 +1215,7 @@ class Update_StoreProductsAPIView(APIView):
         if not row:
             return Response({"error": "Store Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        id_product, current_promotional = row
+        id_product = row
        
         # No change in promotional status, only update specified attributes
         set_clause = ', '.join(set_values)
