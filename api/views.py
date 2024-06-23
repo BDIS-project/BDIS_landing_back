@@ -886,18 +886,18 @@ class CreateEmployeeAPIView(APIView):
         id_employee = request.data.get('id')
         empl_surname = request.data.get('surname')
         empl_name = request.data.get('name')
-        empl_patronymic = request.data.get('patronymic')
+        empl_patronymic = request.data.get('patronymic', None)
         empl_role = request.data.get('role')
         salary = request.data.get('salary')
         date_of_birth = request.data.get('birth')
         date_of_start = request.data.get('start')
         phone_number = request.data.get('phone')
-        city = request.data.get('city', None)
-        street = request.data.get('street', None)
-        zip_code = request.data.get('zip-code', None)
+        city = request.data.get('city')
+        street = request.data.get('street')
+        zip_code = request.data.get('zip-code')
 
         # check if all neccesary parameters are present
-        if (not id_employee or not empl_surname or not empl_name or not empl_patronymic or not empl_role 
+        if (not id_employee or not empl_surname or not empl_name or not empl_role 
         or not salary or not date_of_birth or not date_of_start or not phone_number or not city or not street or not zip_code):
             return Response({'error': 'Required fields are missing'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1131,12 +1131,19 @@ class Update_ProductsAPIView(APIView):
         category_number = request.data.get('category_number')
         product_name = request.data.get('product_name')
         characteristics = request.data.get('characteristics')
-        picture = request.data.get('picture')
+        picture = request.data.get('picture', None)
 
         cursor = connection.cursor()
 
         set_values = []
         params = []
+
+        if not category_number:
+            return Response({'error': 'category_number is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not product_name:
+            return Response({'error': 'product_name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not characteristics:
+            return Response({'error': 'characteristics is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         if category_number is not None:
             set_values.append("category_number = %s")
@@ -1179,6 +1186,17 @@ class Update_StoreProductsAPIView(APIView):
         selling_price = request.data.get('selling_price')
         products_number = request.data.get('products_number')
         expire_date = request.data.get('expire_date')
+
+        if not upc:
+            return Response({'error': 'upc is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not id_product:
+            return Response({'error': 'id_product is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not selling_price:
+            return Response({'error': 'selling_price is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not products_number:
+            return Response({'error': 'products_number is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not expire_date:
+            return Response({'error': 'expire_date is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         cursor = connection.cursor()
 
@@ -1248,6 +1266,28 @@ class Update_EmployeeAPIView(APIView):
         street = request.data.get('street')
         zip_code = request.data.get('zip_code')
 
+
+        if not empl_surname:
+            return Response({'error': 'empl_surname is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not empl_name:
+            return Response({'error': 'empl_name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not empl_role:
+            return Response({'error': 'empl_role is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not salary:
+            return Response({'error': 'salary is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not date_of_birth:
+            return Response({'error': 'date_of_birth is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not date_of_start:
+            return Response({'error': 'date_of_start is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not phone_number:
+            return Response({'error': 'phone_number is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not city:
+            return Response({'error': 'city is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not street:
+            return Response({'error': 'street is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not zip_code:
+            return Response({'error': 'zip_code is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
         cursor = connection.cursor()
 
         # Build the SET clause dynamically based on provided fields
@@ -1288,9 +1328,6 @@ class Update_EmployeeAPIView(APIView):
             set_values.append("zip_code = %s")
             params.append(zip_code)
 
-        # If no fields to update are provided, return an error response
-        if not set_values:
-            return Response({"error": "At least one attribute (empl_surname, empl_name, empl_patronymic, empl_role, salary, date_of_birth, date_of_start, phone_number, city, street, zip_code) is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Update all specified attributes
@@ -1324,6 +1361,22 @@ class Update_CustomerCardView(APIView):
         street = request.data.get('street')
         zip_code = request.data.get('zip_code')
         percent = request.data.get('percent')
+
+
+        if not empl_surname:
+            return Response({'error': 'empl_surname is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not empl_name:
+            return Response({'error': 'empl_name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not empl_role:
+            return Response({'error': 'empl_role is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not salary:
+            return Response({'error': 'salary is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not date_of_birth:
+            return Response({'error': 'date_of_birth is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not date_of_start:
+            return Response({'error': 'date_of_start is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not phone_number:
+            return Response({'error': 'phone_number is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         cursor = connection.cursor()
 
