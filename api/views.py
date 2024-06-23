@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
 import logging
+from datetime import datetime, timedelta
 
 import random
 import string
@@ -187,12 +188,9 @@ class CheckOverviewAPIView(APIView):
     permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
-        last_day = request.GET.get('last_day')
+        period = request.GET.get('period')
         complete_check_info = request.GET.get('complete_check_info')
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
         
-        query_conditions = []
         params = []
 
         base_query = "SELECT * FROM Check_Table"
@@ -205,23 +203,25 @@ class CheckOverviewAPIView(APIView):
             ]
             base_query = "".join(parts)   
             params.append(complete_check_info)
+        else:
+            if period == 'day':
+                start_date = datetime.now() - timedelta(days=1)
+            elif period == 'week':
+                start_date = datetime.now() - timedelta(weeks=1)
+            elif period == 'month':
+                start_date = datetime.now() - timedelta(days=30)
+            elif period == 'year':
+                start_date = datetime.now() - timedelta(days=365)
+            elif period == 'all':
+                start_date = None
+            else:
+                return Response({"error": "Invalid period specified"}, status=status.HTTP_400_BAD_REQUEST)
 
-        elif last_day:
-            base_query = "SELECT * FROM Check_Table WHERE print_date BETWEEN CURRENT_DATE - INTERVAL '1 day' AND CURRENT_DATE"
-            params.append(last_day)    
-
-        elif start_date and end_date:
-            base_query = "SELECT * FROM Check_Table WHERE print_date BETWEEN %s AND %s"
-            params.append(start_date)
-            params.append(end_date)
-
-        elif start_date:     
-            base_query = "SELECT * FROM Check_Table WHERE print_date >= %s AND print_date <= NOW()"
-            params.append(start_date)
-
-        elif end_date:
-            base_query = "SELECT * FROM Check_Table WHERE print_date <= %s AND print_date >= NOW()"
-            params.append(end_date)
+            if start_date:
+                base_query += " WHERE print_date >= %s"
+                params.append(start_date)
+            elif period == 'all':
+                pass  # No additional conditions for 'all' period
 
         query = base_query + ';'
         with connection.cursor() as cursor:
@@ -231,7 +231,7 @@ class CheckOverviewAPIView(APIView):
 
         result = [dict(zip(check_number, check)) for check in checks]
 
-        return Response(result, status=status.HTTP_200_OK) 
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class CategoriesAPIView(APIView):
