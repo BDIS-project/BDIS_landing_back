@@ -387,17 +387,22 @@ class AboutMeAPIView(APIView):
     API view to rethrive all info about CASHIER
     currently loggen in
     """
-    permission_classes = [IsCashier]
+    permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
-        user_id = request.user["id"]
-        with connection.cursor() as cursor:
-            cursor.execute(
-            "SELECT id_employee "
-            "FROM User_Table "
-            "WHERE user_id = %s",
-            [user_id])
+        cashier_id = request.GET.get('id')
+        if not cashier_id:
+            user_id = request.user["id"]
+            user_role = request.user["role"]
+            if user_role != "Cashier":
+                return Response({'error': "Non-cashier usage prohibited without id"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            with connection.cursor() as cursor:
+                cursor.execute(
+                "SELECT id_employee "
+                "FROM User_Table "
+                "WHERE user_id = %s",
+                [user_id])
 
-            cashier_id = cursor.fetchone()
+                cashier_id = cursor.fetchone()
         
         employee_query = """SELECT * FROM EMPLOYEE
         WHERE id_employee = %s;
@@ -506,7 +511,7 @@ class ManagerStoreOverviewAPIView(APIView):
 
 
 class CompleteSingleCheckOverviewAPIView(APIView):
-    permission_classes = [IsManager]
+    permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
         check_number = request.GET.get('check_number')
@@ -1861,7 +1866,7 @@ class CategoryProductInfo(APIView):
             query += ' ORDER BY c.category_number, c.category_name'
         query += ';'
         
-        """
+
 
         if lower_end_quantity is not None:
             query += ' HAVING COALESCE(SUM(product_number),0)>%s'
@@ -1876,7 +1881,7 @@ class CategoryProductInfo(APIView):
 
         result = [dict(zip(columns, row)) for row in rows]
 
-        return Response(result, status=status.HTTP_200_OK)"""
+        return Response(result, status=status.HTTP_200_OK)
     
 
         
