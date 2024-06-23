@@ -1589,7 +1589,7 @@ class StatisticsAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
 
-    def create_report(self, path, *args, **kwargs):
+    def create_report(self, *args, **kwargs):
         json_report_as_string = """
         {
             "report": {
@@ -1617,6 +1617,8 @@ class StatisticsAPIView(APIView):
             }
         }
         """
+
+        return json_report_as_string
 
 
     def table_to_json_string(self, table_name, *args, **kwargs):
