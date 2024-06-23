@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 import hashlib
 import logging
+from datetime import datetime, timedelta
 
 import random
 import string
@@ -62,13 +63,12 @@ class StoreProductsAPIView(APIView):
         process_store_products()
 
         search = request.GET.get('search')
-        promotional = request.GET.get('promotional')
         min_price = request.GET.get('minPrice')
         max_price = request.GET.get('maxPrice')
         categories = request.GET.get('categories')
         in_stock = request.GET.get('inStock')
         sort_by = request.GET.get('sort')
-
+        viewPromotional = request.GET.get('viewPromotional')
         query_conditions = []
         params = []
 
@@ -86,6 +86,13 @@ class StoreProductsAPIView(APIView):
                 sorter = "products_number DESC"
             else:
                 sorter = "products_number"
+
+        promotional = None
+        if viewPromotional == "promo":
+            promotional = True
+        elif viewPromotional == "no-promo":
+            promotional = False
+         
            
         base_query = (
             "SELECT Store_Product.*, product_name, category_name, picture "
@@ -111,9 +118,10 @@ class StoreProductsAPIView(APIView):
                 query_conditions.append("AND UPC = %s")
                 params.append(search)
 
-        if promotional:
+        if promotional is not None:
             query_conditions.append("AND promotional_product = %s")
-            params.append(promotional.lower() == 'true')
+            params.append(promotional)
+
         if min_price:
             query_conditions.append("AND selling_price >= %s")
             params.append(min_price)
@@ -181,12 +189,9 @@ class CheckOverviewAPIView(APIView):
     permission_classes = [IsCashierOrManager]
 
     def get(self, request, *args, **kwargs):
-        last_day = request.GET.get('last_day')
+        period = request.GET.get('period')
         complete_check_info = request.GET.get('complete_check_info')
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
         
-        query_conditions = []
         params = []
 
         base_query = "SELECT * FROM Check_Table"
@@ -199,23 +204,25 @@ class CheckOverviewAPIView(APIView):
             ]
             base_query = "".join(parts)   
             params.append(complete_check_info)
+        else:
+            if period == 'day':
+                start_date = datetime.now() - timedelta(days=1)
+            elif period == 'week':
+                start_date = datetime.now() - timedelta(weeks=1)
+            elif period == 'month':
+                start_date = datetime.now() - timedelta(days=30)
+            elif period == 'year':
+                start_date = datetime.now() - timedelta(days=365)
+            elif period == 'all':
+                start_date = None
+            else:
+                return Response({"error": "Invalid period specified"}, status=status.HTTP_400_BAD_REQUEST)
 
-        elif last_day:
-            base_query = "SELECT * FROM Check_Table WHERE print_date BETWEEN CURRENT_DATE - INTERVAL '1 day' AND CURRENT_DATE"
-            params.append(last_day)    
-
-        elif start_date and end_date:
-            base_query = "SELECT * FROM Check_Table WHERE print_date BETWEEN %s AND %s"
-            params.append(start_date)
-            params.append(end_date)
-
-        elif start_date:     
-            base_query = "SELECT * FROM Check_Table WHERE print_date >= %s AND print_date <= NOW()"
-            params.append(start_date)
-
-        elif end_date:
-            base_query = "SELECT * FROM Check_Table WHERE print_date <= %s AND print_date >= NOW()"
-            params.append(end_date)
+            if start_date:
+                base_query += " WHERE print_date >= %s"
+                params.append(start_date)
+            elif period == 'all':
+                pass  # No additional conditions for 'all' period
 
         query = base_query + ';'
         with connection.cursor() as cursor:
@@ -225,7 +232,7 @@ class CheckOverviewAPIView(APIView):
 
         result = [dict(zip(check_number, check)) for check in checks]
 
-        return Response(result, status=status.HTTP_200_OK) 
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class CategoriesAPIView(APIView):
@@ -285,6 +292,27 @@ class AboutMeAPIView(APIView):
     permission_classes = [IsCashierOrManager]
     def get(self, request, *args, **kwargs):
         cashier_id = request.GET.get('id')
+        period = request.GET.get('period')
+
+        if period == 'day':
+            start_date = datetime.now() - timedelta(days=1)
+        elif period == 'week':
+            start_date = datetime.now() - timedelta(weeks=1)
+        elif period == 'month':
+            start_date = datetime.now() - timedelta(days=30)
+        elif period == 'year':
+            start_date = datetime.now() - timedelta(days=365)
+        elif period == 'all':
+            start_date = None
+        else:
+            return Response({"error": "Invalid period specified"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if start_date:
+            base_query += " WHERE print_date >= %s"
+            params.append(start_date)
+        elif period == 'all':
+            pass  # No additional conditions for 'all' period
+        
         if not cashier_id:
             user_id = request.user["id"]
             user_role = request.user["role"]
@@ -294,8 +322,8 @@ class AboutMeAPIView(APIView):
                 cursor.execute(
                 "SELECT id_employee "
                 "FROM User_Table "
-                "WHERE user_id = %s",
-                [user_id])
+                "WHERE user_id = %s and print_date > %s",
+                [user_id, start_date])
 
                 cashier_id = cursor.fetchone()
         
@@ -313,6 +341,13 @@ class AboutMeAPIView(APIView):
             employee_names = [col[0] for col in cursor.description]
 
         employee_result = [dict(zip(employee_names, empl)) for empl in employee]
+
+        # Query to get checks info
+        if start_date:
+            check_query = """ SELECT * FROM Check_Table WHERE id_employee = %s AND print_date >= %s"""
+            params.append(start_date)
+        else:
+            check_query = """ SELECT * FROM Check_Table WHERE id_employee = %s"""
 
         with connection.cursor() as cursor:
             cursor.execute(check_query, params)
