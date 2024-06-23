@@ -1158,8 +1158,6 @@ class Update_ProductsAPIView(APIView):
             set_values.append("picture = %s")
             params.append(picture)
 
-        if not set_values:
-            return Response({"error": "At least one of category_number, product_name, characteristics, picture is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         query = f"""
             UPDATE Product
@@ -1349,7 +1347,7 @@ class Update_EmployeeAPIView(APIView):
         
 
 class Update_CustomerCardView(APIView):
-    permission_classes = [IsManager]
+    permission_classes = [IsCashierOrManager]
 
     def post(self, request, card_number, *args, **kwargs):
         # Extract all possible fields that can be updated
@@ -1363,20 +1361,14 @@ class Update_CustomerCardView(APIView):
         percent = request.data.get('percent')
 
 
-        if not empl_surname:
-            return Response({'error': 'empl_surname is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not empl_name:
-            return Response({'error': 'empl_name is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not empl_role:
-            return Response({'error': 'empl_role is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not salary:
-            return Response({'error': 'salary is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not date_of_birth:
-            return Response({'error': 'date_of_birth is required'}, status=status.HTTP_400_BAD_REQUEST)
-        if not date_of_start:
-            return Response({'error': 'date_of_start is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not cust_surname:
+            return Response({'error': 'cust_surname is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not cust_name:
+            return Response({'error': 'cust_name is required'}, status=status.HTTP_400_BAD_REQUEST)
         if not phone_number:
             return Response({'error': 'phone_number is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not percent:
+            return Response({'error': 'percent is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         cursor = connection.cursor()
 
@@ -1409,9 +1401,6 @@ class Update_CustomerCardView(APIView):
             set_values.append("percent = %s")
             params.append(percent)
 
-        # If no fields to update are provided, return an error response
-        if not set_values:
-            return Response({"error": "At least one attribute (cust_surname, cust_name, cust_patronymic, phone_number, city, street, zip_code, percent) is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Update all specified attributes
@@ -1441,6 +1430,13 @@ class Update_CheckTableView(APIView):
         print_date = request.data.get('print_date')
         sum_total = request.data.get('sum_total')
 
+        if not id_employee:
+            return Response({'error': 'id_employee is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not print_date:
+            return Response({'error': 'print_date is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not sum_total:
+            return Response({'error': 'sum_total is required'}, status=status.HTTP_400_BAD_REQUEST)
+
         cursor = connection.cursor()
 
         # Build the SET clause dynamically based on provided fields
@@ -1460,9 +1456,6 @@ class Update_CheckTableView(APIView):
             set_values.append("sum_total = %s")
             params.append(sum_total)
 
-        # If no fields to update are provided, return an error response
-        if not set_values:
-            return Response({"error": "At least one attribute (id_employee, card_number, print_date, sum_total) is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Update all specified attributes
